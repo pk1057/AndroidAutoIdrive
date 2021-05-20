@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:animateLayoutChanges="true"
+        android:paddingEnd="@dimen/default_margin"
+        android:paddingStart="@dimen/default_margin"
+        android:paddingTop="@dimen/default_margin">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/pane_vertical_margin"
+            android:text="@string/lbl_evplanningpage"/>
+
+        <View style="@style/Divider"
+            android:layout_marginBottom="@dimen/pane_vertical_margin"/>
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/swEVPlanningEnabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/settings_vertical_margin"
+            android:text="@string/evplannning_enable"
+            android:checked="true" />
+
+        <androidx.fragment.app.FragmentContainerView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/paneEVPlanningSettings"
+            android:name="me.hufman.androidautoidrive.phoneui.fragments.EVPlanningSettingsFragment"/>
+
+        <androidx.fragment.app.FragmentContainerView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/paneEVPlanningData"
+            android:name="me.hufman.androidautoidrive.phoneui.fragments.EVPlanningDataFragment"/>
+
+    </LinearLayout>
+</ScrollView>

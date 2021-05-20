@@ -72,6 +72,10 @@ object L {
 	var MUSIC_SPOTIFY_THUMB_DOWN = "Thumb Down"
 	var MUSIC_SPOTIFY_THUMBS_DOWN_SELECTED = "Thumbed Down"    // not sure if this exists, but just to be complete
 
+	var EVPLANNING_TITLE = "EVPlanning"
+	var EVPLANNING_EMPTY_LIST = "No Charging Stops"
+	var EVPLANNING_OPTIONS = "Options"
+
 	fun loadResources(context: Context, locale: Locale? = null) {
 		val thisContext = if (locale == null) { context } else {
 			val origConf = context.resources.configuration

@@ -41,6 +41,7 @@
     <string name="menu_navigation">Navigation</string>
     <string name="menu_settings">Settings</string>
     <string name="menu_support">Support</string>
+    <string name="menu_evplanning">EVPlanning</string>
 
     <string name="lbl_overviewpage">AndroidAutoIdrive integrates some of your phone\'s music apps and your phone\'s notifications into your car over the custom BMW Apps protocol</string>
     <string name="lbl_connectionpage">The apps connection to the car depends on a few pieces, and here are some hints to make sure it\'s working well</string>
@@ -48,6 +49,9 @@
         <item quantity="one">Your phone\'s voice assistant is added as a Connected app, in case the car\'s voice input doesn\'t trigger it</item>
         <item quantity="other">Your phone\'s voice assistants are added as a Connected app, in case the car\'s voice input doesn\'t trigger it</item>
     </plurals>
+
+    <string name="lbl_evplanningpage">You can use EVPlanning to plan charging-stops for electric vehicles</string>
+    <string name="evplannning_enable">Enable EVPlanning</string>
 
     <string name="lbl_notificationpage">Your incoming notifications can be viewed and interacted with from the car</string>
     <string name="spawn_test_notification">Test Notification</string>
@@ -122,6 +126,14 @@
     <string name="btn_configure">Configure …</string>
     <string name="btn_add">Add</string>
     <string name="lbl_error">Error</string>
+
+    <string name="lbl_evplanning_data">Routing Data</string>
+    <string name="lbl_evplanning_position">Position</string>
+    <string name="lbl_evplanning_next_destination">Next Destination</string>
+    <string name="lbl_evplanning_final_destination">Final Destination</string>
+    <string name="lbl_evplanning_odometer">Odometer</string>
+    <string name="lbl_evplanning_soc">State of charge</string>
+    <string name="lbl_evplanning_torque">Torque</string>
 
     <string name="connectionStatusMissingConnectedApp">Can\'t find Connected or Connected Classic app</string>
     <string name="connectionStatusWaiting">Waiting for connection to car</string>
@@ -283,4 +295,8 @@
     <string name="MUSIC_SPOTIFY_THUMBS_UP_SELECTED">Thumbed Up</string>
     <string name="MUSIC_SPOTIFY_THUMB_DOWN">Thumb Down</string>
     <string name="MUSIC_SPOTIFY_THUMBS_DOWN_SELECTED">Thumbed Down</string>
+
+    <string name="EVPLANNING_TITLE">EVPlanning</string>
+    <string name="EVPLANNING_EMPTY_LIST">No Charging Stops"</string>
+    <string name="EVPLANNING_OPTIONS">Options</string>
 </resources>

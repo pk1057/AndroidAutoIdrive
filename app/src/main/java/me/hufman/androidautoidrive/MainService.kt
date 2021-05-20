@@ -15,6 +15,7 @@ import me.hufman.androidautoidrive.carapp.assistant.AssistantApp
 import me.hufman.androidautoidrive.carapp.maps.MapAppMode
 import me.hufman.androidautoidrive.carapp.music.MusicAppMode
 import me.hufman.androidautoidrive.phoneui.*
+import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningDataViewModel
 import me.hufman.androidautoidrive.utils.GraphicsHelpersAndroid
 import me.hufman.idriveconnectionkit.CDS
 import me.hufman.idriveconnectionkit.android.CarAPIAppInfo
@@ -67,6 +68,9 @@ class MainService: Service() {
 			stopSelf()
 		}
 	}
+
+	var evPlanningService: EVPlanningService? = null
+
 
 	override fun onCreate() {
 		super.onCreate()
@@ -146,6 +150,7 @@ class MainService: Service() {
 		announceCarAPI()
 		iDriveConnectionReceiver.subscribe(this)
 		startCarProber()
+		EVPlanningDataViewModel.setStatus("actionStart")
 	}
 
 	private fun createNotificationChannel() {
@@ -247,6 +252,9 @@ class MainService: Service() {
 						carInformationObserver.cdsData[CDS.VEHICLE.LANGUAGE] == null) {
 					// still waiting for language
 				} else {
+					// start my app
+					startAny = startAny or startEVPlanning()
+
 					// start notifications
 					startAny = startAny or startNotifications()
 
@@ -374,6 +382,17 @@ class MainService: Service() {
 		threadAssistant = null
 	}
 
+	fun startEVPlanning(): Boolean {
+		if (carInformationObserver.capabilities.isNotEmpty() && evPlanningService == null) {
+			evPlanningService = EVPlanningService(this, iDriveConnectionReceiver, securityAccess, carInformationObserver)
+		}
+		return evPlanningService?.start() ?: false
+	}
+
+	fun stopEVPlanning() {
+		evPlanningService?.stop()
+	}
+
 	fun startNavigationListener() {
 		if (carInformationObserver.capabilities["navi"] == "true") {
 			if (iDriveConnectionReceiver.brand?.toLowerCase(Locale.ROOT) == "bmw") {
@@ -403,6 +422,7 @@ class MainService: Service() {
 
 	private fun stopCarApps() {
 		stopCarCapabilities()
+		stopEVPlanning()
 		stopNotifications()
 		stopMaps()
 		stopMusic()
@@ -419,6 +439,7 @@ class MainService: Service() {
 		synchronized(MainService::class.java) {
 			stopCarApps()
 		}
+		EVPlanningDataViewModel.setStatus("actionStop")
 	}
 
 	private fun stopServiceNotification() {

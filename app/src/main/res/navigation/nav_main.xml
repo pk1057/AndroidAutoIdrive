@@ -39,4 +39,8 @@
         android:id="@+id/nav_support"
         android:name="me.hufman.androidautoidrive.phoneui.fragments.SupportPageFragment"
         android:label="@string/menu_support" />
+    <fragment
+        android:id="@+id/nav_evplanning"
+        android:name="me.hufman.androidautoidrive.phoneui.fragments.EVPlanningPageFragment"
+        android:label="@string/menu_evplanning" />
 </navigation>

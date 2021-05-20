@@ -38,6 +38,11 @@
             android:id="@+id/nav_notifications"
             android:icon="@drawable/ic_bell_feather"
             android:title="@string/menu_notifications" />
+
+        <item
+            android:id="@+id/nav_evplanning"
+            android:icon="@drawable/ic_map_feather"
+            android:title="@string/menu_evplanning" />
     </group>
     <group android:id="@+id/menugroup_support">
         <item
