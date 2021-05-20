@@ -116,7 +116,7 @@ class NavigationListView(val state: RHMIState, val graphicsHelpers: GraphicsHelp
 		state.componentsList.forEach { it.setVisible(false) }
 
 		navigationListView.setVisible(true)
-		navigationListView.setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,200,50,50,50")
+		navigationListView.setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*,0,150")
 		navigationListView.setProperty(RHMIProperty.PropertyId.BOOKMARKABLE, true)
 		navigationListView.getAction()?.asRAAction()?.rhmiActionCallback = object: RHMIActionListCallback {
 			override fun onAction(index: Int, invokedBy: Int?) {
@@ -193,8 +193,9 @@ class NavigationListView(val state: RHMIState, val graphicsHelpers: GraphicsHelp
 			navigationListView.getModel()?.value = object : RHMIListAdapter<NavigationEntry>(5, entries) {
 				override fun convertRow(index: Int, item: NavigationEntry): Array<Any> {
 					val icon = item.icon?.let { graphicsHelpers.compress(it, 48, 48) } ?: ""
-					val text = "${item.title}\n${item.text.trim().split(Regex("\n")).lastOrNull() ?: ""}"
-					return arrayOf(icon, text, item.distance, item.soc, item.eta)
+					val text = "${item.title}\n[${item.operator}] ${item.type} ${item.step_dst}km ${item.soc_ariv}%"
+					val arrival = "${item.trip_dst}km\n${item.eta}"
+					return arrayOf(icon, "", text, "", arrival)
 				}
 			}
 		}

@@ -22,11 +22,15 @@ import android.graphics.drawable.Drawable
 data class NavigationEntry(
 		val icon: Drawable? = null, // the icon in the main list
 		val title: String = "",     // first line of text
-		val text: String = "",      // details
+		val operator: String = "",
+		val type: String = "",      // details
 		val address: String = "",
-		val distance: String = "",      // distance
-		val soc: String = "",       // estimated state of charge
+		val trip_dst: String = "",  // distance
+		val step_dst: String = "",  // distance since last stop
+		val soc_ariv: String = "",  // estimated state of charge on arrival
+		val soc_dep: String = "",   // recommended state of charge at departure
 		val eta: String = "",       // estimated time of arrival
+		val etd: String = "",       // estimated time of departure
 		val duration: String = "",
 		val lat: Double,
 		val lon: Double,

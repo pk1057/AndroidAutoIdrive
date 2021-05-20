@@ -49,13 +49,17 @@ class NavigationModelUpdater() {
 	}
 
 	companion object {
+
+		val TIME_FMT = DateTimeFormatter.ofPattern("HH:mm")
+		val NAME_MATCHER = Regex("^(.*[^\\s])\\s*\\[([^\\[]*)\\]\$")
+
 		fun parseRoutingData(routingData: RoutingData): List<NavigationEntry>? {
-			val dtFmt = DateTimeFormatter.ofPattern("HH:mm")
 
 			class Acc(
 					var previous: Step? = null,
 					val list: MutableList<NavigationEntry> = mutableListOf(),
 					var time: LocalDateTime? = LocalDateTime.now(),
+					var trip: Int? = 0,
 			)
 			return routingData.routeDistance?.let { routeDistance ->
 				routingData.plan?.routes?.get(routeDistance.routeIndex)
@@ -63,18 +67,23 @@ class NavigationModelUpdater() {
 				with(acc) {
 					previous?.let { privstep ->
 						time = privstep.drive_duration?.let { time?.plusSeconds(it.toLong()) }
+						trip = privstep.drive_dist?.let { trip?.plus(it) }
 					}
 					if (step.is_charger == true || step.is_end_station == true) {
+						val nameParts = step.name?.let { NAME_MATCHER.matchEntire(it) }?.groupValues
 						list.add(NavigationEntry(
-								title = step.name ?: "- unknown -",
-								text = step.charger_type ?: "",
+								title = nameParts?.getOrNull(1) ?: "- unknown -",
+								operator = nameParts?.lastOrNull() ?: "",
+								type = step.charger_type?.toUpperCase() ?: "",
 								address = step.charger?.address ?: "- no address -",
-								distance = (previous?.drive_dist?.div(1000)?.toString()
-										?: "--") + "km",
-								soc = step.arrival_perc?.toString()?.plus("%") ?: "",
-								eta = time?.format(dtFmt) ?: "--:--",
-								duration = "(" + (step.charge_duration?.div(60)?.toString()
-										?: "- ") + "min)",
+								trip_dst = trip?.let { formatDistance(it) } ?: "--",
+								step_dst = previous?.drive_dist?.let { formatDistance(it) } ?: "--",
+								soc_ariv = step.arrival_perc?.toString() ?: "",
+								soc_dep = step.departure_perc?.toString() ?: "",
+								eta = time?.format(TIME_FMT) ?: "--:--",
+								etd = step.charge_duration?.let { time?.plusSeconds(it.toLong()) }?.format(TIME_FMT)
+										?: "--:--",
+								duration = step.charge_duration?.div(60)?.toString() ?: "-",
 								lat = step.lat,
 								lon = step.lon,
 						))
@@ -85,6 +94,14 @@ class NavigationModelUpdater() {
 				}
 				acc
 			})?.list
+		}
+
+		fun formatDistance(dist: Int): String {
+			return if (dist > 9999) {
+				dist.div(1000).toString()
+			} else {
+				String.format("%.1f", dist.div(1000.0))
+			}
 		}
 	}
 }

@@ -36,7 +36,7 @@ class NavigationController(val context: Context, val navigationModel: Navigation
 		navigationModel.selectedNavigationEntry?.let { entry ->
 			Address(Locale.getDefault()).apply {
 				thoroughfare = entry.address
-				featureName = entry.title
+				featureName = "${entry.title} [${entry.operator}] ${entry.type}"
 				latitude = entry.lat
 				longitude = entry.lon
 			}.let {

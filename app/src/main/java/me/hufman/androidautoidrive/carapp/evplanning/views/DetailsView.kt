@@ -26,14 +26,13 @@ import me.hufman.androidautoidrive.carapp.RHMIModelType
 import me.hufman.idriveconnectionkit.android.CarAppResources
 import me.hufman.idriveconnectionkit.rhmi.*
 import java.util.ArrayList
-import kotlin.math.min
 
 interface DetailsListener {
 	fun onListentryAction(index: Int, invokedBy: Int?)
 }
 
 class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers,
-                  val EVPlanningSettings: EVPlanningSettings,
+                  val settings: EVPlanningSettings,
                   val listener: DetailsListener,
                   val focusTriggerController: FocusTriggerController,
                   val navigationModel: NavigationModel,
@@ -45,7 +44,6 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 						it.getModel()?.modelType == "Richtext"
 					} != null
 		}
-
 		const val MAX_LENGTH = 10000
 	}
 
@@ -193,15 +191,15 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 		// find the notification, or bail to the list
 		//TODO: implement retrival of navigationEntry from list
 		//val notification = NotificationsState.getNotificationByKey(selectedNavigationEntry?.key)
-		val navigationEntry: NavigationEntry? = navigationModel.selectedNavigationEntry
-		if (navigationEntry == null) {
+		val entry: NavigationEntry? = navigationModel.selectedNavigationEntry
+		if (entry == null) {
 			focusTriggerController.focusState(listState, false)
 			return
 		}
 
 		// prepare the app icon and title
-		val icon = navigationEntry.icon?.let {graphicsHelpers.compress(it, 48, 48)} ?: ""
-		val title = navigationEntry.title
+		val icon = entry.icon?.let {graphicsHelpers.compress(it, 48, 48)} ?: ""
+		val title = entry.title
 		val titleListData = RHMIModel.RaListModel.RHMIListConcrete(3)
 		titleListData.addRow(arrayOf(icon, "", title))
 
@@ -209,7 +207,7 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 		var sidePictureWidth = 0
 		val addressListData = RHMIModel.RaListModel.RHMIListConcrete(2)
 //		if (navigationEntry.sidePicture == null || navigationEntry.sidePicture.intrinsicHeight <= 0) {
-			addressListData.addRow(arrayOf("", navigationEntry.address))
+			addressListData.addRow(arrayOf("", entry.address))
 //		} else {
 //			val sidePictureHeight = 96  // force the side picture to be this tall
 //			sidePictureWidth = (sidePictureHeight.toFloat() / navigationEntry.sidePicture.intrinsicHeight * navigationEntry.sidePicture.intrinsicWidth).toInt()
@@ -220,8 +218,8 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 
 		// prepare the notification text
 		val descriptionListData = RHMIModel.RaListModel.RHMIListConcrete(1)
-		val trimmedText = navigationEntry.text.substring(0, min(MAX_LENGTH, navigationEntry.text.length))
-		descriptionListData.addRow(arrayOf(trimmedText))
+		val text = "[${entry.operator}] ${entry.type} ${entry.step_dst}km (${entry.trip_dst}km) ${entry.soc_ariv}%-${entry.soc_dep}% (${entry.duration}min) ${entry.eta}-${entry.etd}Uhr"
+		descriptionListData.addRow(arrayOf(text))
 
 		state.getTextModel()?.asRaDataModel()?.value = title
 		titleWidget.getModel()?.value = titleListData
