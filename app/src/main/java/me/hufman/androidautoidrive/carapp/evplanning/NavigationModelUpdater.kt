@@ -31,7 +31,9 @@ class NavigationModelUpdater() {
 
 	val routingDataListener = object : RoutingDataListener {
 		override fun onRoutingDataChanged(routingData: RoutingData) {
+			//TODO: for debugging only, remove later:
 			EVPlanningDataViewModel.setRoutingData(routingData)
+
 			val entries = parseRoutingData(routingData)
 			threadCarApp?.post {
 				navigationModel?.navigationEntries = entries
@@ -58,49 +60,69 @@ class NavigationModelUpdater() {
 			class Acc(
 					var previous: Step? = null,
 					val list: MutableList<NavigationEntry> = mutableListOf(),
-					var time: LocalDateTime? = LocalDateTime.now(),
-					var trip: Int? = 0,
 			)
+
 			return routingData.routeDistance?.let { routeDistance ->
-				routingData.plan?.routes?.get(routeDistance.routeIndex)
-			}?.steps?.fold(Acc(), { acc, step ->
-				with(acc) {
-					previous?.let { privstep ->
-						time = privstep.drive_duration?.let { time?.plusSeconds(it.toLong()) }
-						trip = privstep.drive_dist?.let { trip?.plus(it) }
-					}
-					if (step.is_charger == true || step.is_end_station == true) {
+				routingData.plan?.routes?.getOrNull(routeDistance.routeIndex)
+			}?.let { route ->
+				val (start_dist, start_time) = routingData.routeDistance.pathStepIndex?.let {
+					route.steps?.getOrNull(routingData.routeDistance.stepIndex)?.path?.getOrNull(it)
+				}?.let {
+					Pair(it.remaining_dist?.times(1000)?.toInt(), it.remaining_time)
+				} ?: route.steps?.getOrNull(routingData.routeDistance.stepIndex)?.let {
+					Pair(it.departure_dist, it.departure_duration)
+				} ?: route.steps?.firstOrNull()?.let {
+					Pair(it.departure_dist, it.departure_duration)
+				} ?: Pair(null, null)
+
+				val now = LocalDateTime.now()
+
+				route.steps?.filterIndexed { index, step ->
+					index >= routingData.routeDistance.stepIndex
+				}?.foldIndexed(Acc(), { index, acc, step ->
+					if ((step.is_charger == true || step.is_end_station == true)
+							&& (index > 0 || routingData.routeDistance.pathStepIndex == null || routingData.routeDistance.pathStepIndex < 2)) {
+
 						val nameParts = step.name?.let { NAME_MATCHER.matchEntire(it) }?.groupValues
-						list.add(NavigationEntry(
+
+						val eta = when (index) {
+							0 -> 0
+							else -> step.arrival_duration?.let { start_time?.minus(it) }
+						}?.let { now.plusSeconds(it.toLong()) }
+
+						acc.list.add(NavigationEntry(
 								title = nameParts?.getOrNull(1) ?: "- unknown -",
 								operator = nameParts?.lastOrNull() ?: "",
 								type = step.charger_type?.toUpperCase() ?: "",
 								address = step.charger?.address ?: "- no address -",
-								trip_dst = trip?.let { formatDistance(it) } ?: "--",
-								step_dst = previous?.drive_dist?.let { formatDistance(it) } ?: "--",
+								trip_dst = step.departure_dist?.let { start_dist?.minus(it) }?.let { formatDistance(it) }
+										?: "--",
+								step_dst = when (index) {
+									0 -> step.departure_dist?.let { start_dist?.minus(it) }
+									1 -> step.arrival_dist?.let { start_dist?.minus(it) }
+									else -> acc.previous?.drive_dist
+								}?.let { formatDistance(it) } ?: "--",
 								soc_ariv = step.arrival_perc?.toString() ?: "",
 								soc_dep = step.departure_perc?.toString() ?: "",
-								eta = time?.format(TIME_FMT) ?: "--:--",
-								etd = step.charge_duration?.let { time?.plusSeconds(it.toLong()) }?.format(TIME_FMT)
+								eta = eta?.format(TIME_FMT) ?: "--:--",
+								etd = step.charge_duration?.let { eta?.plusSeconds(it.toLong()) }?.format(TIME_FMT)
 										?: "--:--",
 								duration = step.charge_duration?.div(60)?.toString() ?: "-",
 								lat = step.lat,
 								lon = step.lon,
 						))
 					}
-					step.charge_duration?.let { time = time?.plusSeconds(it.toLong()) }
-					step.wait_duration?.let { time = time?.plusSeconds(it.toLong()) }
-					previous = step
-				}
-				acc
-			})?.list
+					acc.previous = step
+					acc
+				})?.list
+			}
 		}
 
 		fun formatDistance(dist: Int): String {
-			return if (dist > 9999) {
-				dist.div(1000).toString()
-			} else {
+			return if (dist < 10000) {
 				String.format("%.1f", dist.div(1000.0))
+			} else {
+				dist.div(1000).toString()
 			}
 		}
 	}

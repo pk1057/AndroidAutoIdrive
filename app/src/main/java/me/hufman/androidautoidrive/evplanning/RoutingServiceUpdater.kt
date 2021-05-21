@@ -101,6 +101,12 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 		}
 	}
 
+	fun setCurrentRoute(current: Int) {
+		threadRouting?.post {
+			routingService?.setCurrentRoute(current)
+		}
+	}
+
 	private fun doUpdate() {
 		threadRouting?.post {
 			routingService?.onCarDataChanged(
@@ -123,8 +129,11 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 
 	var counter: Int=0
 	fun triggerNextUpdate() {
+
+		//TODO: for debugging, remove later:
 		counter++
 		EVPlanningDataViewModel.setCardataUpdates(counter)
+
 		threadCarApp?.handler?.postDelayed(this::doUpdate, updateScheduleMillis)
 	}
 

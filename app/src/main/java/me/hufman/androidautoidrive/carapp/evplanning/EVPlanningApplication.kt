@@ -67,7 +67,7 @@ interface CarDataListenerRaw {
 	fun onExternalTemperatureChanged(externalTemperature: Int)
 }
 
-class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, val securityAccess: SecurityAccess, val carAppAssets: CarAppResources, val carAppAssets2: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers, val detailsController: DetailsController, private val cardataListenerRaw: CarDataListenerRaw, val settings: EVPlanningSettings, val navigationController: NavigationController) {
+class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, val securityAccess: SecurityAccess, val carAppAssets: CarAppResources, val carAppAssets2: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers, private val cardataListenerRaw: CarDataListenerRaw, val settings: EVPlanningSettings, val navigationController: NavigationController) {
 	var handler: Handler? = null
 	val carappListener: CarAppListener
 	var rhmiHandle: Int = -1
@@ -129,7 +129,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 
 			// figure out which views to use
 			viewList = NavigationListView(unclaimedStates.removeFirst { NavigationListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel)
-			viewDetails = DetailsView(unclaimedStates.removeFirst { DetailsView.fits(it) }, carAppAssets2, phoneAppResources, graphicsHelpers, settings, detailsController, focusTriggerController, navigationController.navigationModel)
+			viewDetails = DetailsView(unclaimedStates.removeFirst { DetailsView.fits(it) }, carAppAssets2, phoneAppResources, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel)
 
 			stateInput = carApp.states.values.filterIsInstance<RHMIState.PlainState>().first {
 				it.componentsList.filterIsInstance<RHMIComponent.Input>().isNotEmpty()
@@ -451,16 +451,5 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 
 	fun hideDetailsViewFromListAction() {
 		viewList.navigationListView.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = 0
-	}
-}
-
-//TODO Detailslistener is for currently only for debug and shall be removed at some point...
-class DetailsController: DetailsListener {
-
-	var numCalls = 0
-
-	override fun onListentryAction(index: Int, invokedBy: Int?) {
-		numCalls++
-		EVPlanningDataViewModel.setCardataDebug(numCalls.toString()+": onListentryAction("+index.toString()+","+(invokedBy?.toString() ?: " - ")+")")
 	}
 }

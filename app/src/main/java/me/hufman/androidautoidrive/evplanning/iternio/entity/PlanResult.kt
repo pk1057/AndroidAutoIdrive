@@ -94,14 +94,14 @@ data class PathStep(
 		val lat: Double,             // Latitude of the path step.
 		val lon: Double,             // lon: Longitude of the pat step.
 		val soc_perc: Double?,       // [SoC %]: The remaining estimated SoC.
-		val cons_per_km: Double?,    // [Wh/km]: The instantaneous estimated consumption.
-		val speed: Double?,          // [m/s]: The estimated speed of the vehicle (note the unit!)
-		val remaining_time: Double?, // [s]: The remaining time for the whole route.
+		val cons_per_km: Int?,       // [Wh/km]: The instantaneous estimated consumption.
+		val speed: Int?,             // [m/s]: The estimated speed of the vehicle (note the unit!)
+		val remaining_time: Int?,    // [s]: The remaining time for the whole route.
 		val remaining_dist: Double?, // [km]: The remaining distance for the whole route.
 		val instruction: String?,    // An English turn instruction.
 		val speed_limit: Double?,    // [m/s]: The present speed limit, if known (note the unit!)
-		val elevation: Double?,      // [m]: The elevation over mean sea level.
-		val path_distance: Double?,  // [m]: The travel distance for this path step only, always 200 m or less.
+		val elevation: Int?,         // [m]: The elevation over mean sea level.
+		val path_distance: Int?,     // [m]: The travel distance for this path step only, always 200 m or less.
 		val jam_factor: Double?,
 		val instruction_obj: Instruction?,
 )
@@ -262,14 +262,14 @@ fun toPathStep(pathstep: List<*>, indices: PathIndices): PathStep? {
 					lat,
 					lon,
 					indices.soc_perc?.let { soc_index -> pathstep.getOrNull(soc_index) as? Double },
-					indices.cons_per_km?.let { cons_index -> pathstep.getOrNull(cons_index) as? Double },
-					indices.speed?.let { speed_index -> pathstep.getOrNull(speed_index) as? Double },
-					indices.remaining_time?.let { remain_time_index -> pathstep.getOrNull(remain_time_index) as? Double },
+					indices.cons_per_km?.let { cons_index -> pathstep.getOrNull(cons_index) as? Double }?.toInt(),
+					indices.speed?.let { speed_index -> pathstep.getOrNull(speed_index) as? Double }?.toInt(),
+					indices.remaining_time?.let { remain_time_index -> pathstep.getOrNull(remain_time_index) as? Double }?.toInt(),
 					indices.remaining_dist?.let { remain_dist_index -> pathstep.getOrNull(remain_dist_index) as? Double },
 					indices.instruction?.let { instruct_index -> pathstep.getOrNull(instruct_index) as? String },
 					indices.speed_limit?.let { limit_index -> pathstep.getOrNull(limit_index) as? Double },
-					indices.elevation?.let { ele_index -> pathstep.getOrNull(ele_index) as? Double },
-					indices.path_distance?.let { dist_index -> pathstep.getOrNull(dist_index) as? Double },
+					indices.elevation?.let { ele_index -> pathstep.getOrNull(ele_index) as? Double }?.toInt(),
+					indices.path_distance?.let { dist_index -> pathstep.getOrNull(dist_index) as? Double }?.toInt(),
 					indices.jam_factor?.let { jam_index -> pathstep.getOrNull(jam_index) as? Double },
 					indices.instruction_obj?.let { instr_obj_index -> pathstep.getOrNull(instr_obj_index) as? Map<*, *> }?.let { instr_obj ->
 						val type = instr_obj["type"] as? String
@@ -386,14 +386,14 @@ fun toResult(planResult: me.hufman.androidautoidrive.evplanning.iternio.dto.Plan
 																		lat,
 																		lon,
 																		indices.soc_perc?.let { soc_index -> pathstep.getOrNull(soc_index) as? Double },
-																		indices.cons_per_km?.let { cons_index -> pathstep.getOrNull(cons_index) as? Double },
-																		indices.speed?.let { speed_index -> pathstep.getOrNull(speed_index) as? Double },
-																		indices.remaining_time?.let { remain_time_index -> pathstep.getOrNull(remain_time_index) as? Double },
+																		indices.cons_per_km?.let { cons_index -> pathstep.getOrNull(cons_index) as? Double }?.toInt(),
+																		indices.speed?.let { speed_index -> pathstep.getOrNull(speed_index) as? Double }?.toInt(),
+																		indices.remaining_time?.let { remain_time_index -> pathstep.getOrNull(remain_time_index) as? Double }?.toInt(),
 																		indices.remaining_dist?.let { remain_dist_index -> pathstep.getOrNull(remain_dist_index) as? Double },
 																		indices.instruction?.let { instr_index -> pathstep.getOrNull(instr_index) as? String },
 																		indices.speed_limit?.let { limit_index -> pathstep.getOrNull(limit_index) as? Double },
-																		indices.elevation?.let { ele_index -> pathstep.getOrNull(ele_index) as? Double },
-																		indices.path_distance?.let { dist_index -> pathstep.getOrNull(dist_index) as? Double },
+																		indices.elevation?.let { ele_index -> pathstep.getOrNull(ele_index) as? Double }?.toInt(),
+																		indices.path_distance?.let { dist_index -> pathstep.getOrNull(dist_index) as? Double }?.toInt(),
 																		indices.jam_factor?.let { jam_index -> pathstep.getOrNull(jam_index) as? Double },
 																		indices.instruction_obj?.let { instr_obj_index -> pathstep.getOrNull(instr_obj_index) as? Map<*, *> }?.let { instr_obj ->
 																			val type = instr_obj["type"] as? String

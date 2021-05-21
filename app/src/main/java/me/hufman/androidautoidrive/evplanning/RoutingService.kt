@@ -57,10 +57,13 @@ class RoutingService(private val planning: Planning, private val routingDataList
 		}
 
 	private var currentRoute = Int.MIN_VALUE
-		set(value) {
-			field = value
+
+	fun setCurrentRoute(current: Int) {
+		if (currentRoute != current) {
+			currentRoute = current
 			calcValues()
 		}
+	}
 
 	fun onCarDataChanged(data: CarData) {
 		carData = data
@@ -102,7 +105,13 @@ class RoutingService(private val planning: Planning, private val routingDataList
 				carData.finalDestination
 		).filter { it.isValid() }
 				.takeIf { it.size > 1 }
-				?.map { Destination(it.latitude, it.longitude) }
+				?.mapIndexed { index, it ->
+					Destination(
+							it.latitude,
+							it.longitude,
+							is_my_pos = if (index == 0) true else null
+					)
+				}
 				?.let { destinations ->
 					planning.plan(
 							PlanRequest(
@@ -110,7 +119,7 @@ class RoutingService(private val planning: Planning, private val routingDataList
 									destinations = destinations,
 									initial_soc_perc = carData.soc,
 									find_alts = true,
-									outside_temp = carData.externalTemperature.toDouble()
+									outside_temp = carData.externalTemperature.toDouble(),
 							),
 							{
 								handler?.post {
@@ -137,6 +146,7 @@ class RoutingService(private val planning: Planning, private val routingDataList
 						?: closestRoute(ruler, plan)
 			}
 		}
+		currentRoute = routeDistance?.routeIndex ?: Int.MIN_VALUE
 		routingDataListener.onRoutingDataChanged(RoutingData(
 				carData = carData,
 				plan = planResult?.result,

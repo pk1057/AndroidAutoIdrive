@@ -33,7 +33,6 @@ interface DetailsListener {
 
 class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers,
                   val settings: EVPlanningSettings,
-                  val listener: DetailsListener,
                   val focusTriggerController: FocusTriggerController,
                   val navigationModel: NavigationModel,
 ) {
@@ -66,7 +65,6 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 		}
 		imageWidget = state.componentsList.filterIsInstance<RHMIComponent.Image>().first()
 		carAppResources.getImagesDB("common")
-		listener.onListentryAction(-1,-1)
 	}
 
 	fun initWidgets(listView: NavigationListView, inputState: RHMIState) {
@@ -120,7 +118,7 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 		}
 		titleWidget.getAction()?.asRAAction()?.rhmiActionCallback = object: RHMIActionListCallback {
 			override fun onAction(index: Int, invokedBy: Int?) {
-				listener.onListentryAction(index,invokedBy)
+//				listener.onListentryAction(index,invokedBy)
 			}
 		}
 		addressWidget.getAction()?.asRAAction()?.rhmiActionCallback = object: RHMIActionListCallback {
@@ -130,7 +128,7 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 		}
 		descriptionWidget.getAction()?.asRAAction()?.rhmiActionCallback = object: RHMIActionListCallback {
 			override fun onAction(index: Int, invokedBy: Int?) {
-				listener.onListentryAction(index,invokedBy)
+//				listener.onListentryAction(index,invokedBy)
 			}
 		}
 

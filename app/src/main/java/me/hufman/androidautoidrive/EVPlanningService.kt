@@ -53,8 +53,6 @@ class EVPlanningService(val context: Context, val iDriveConnectionStatus: IDrive
 	// navigationModelUpdater receives new RoutingData from routingService and posts this to carApplication on the threadCarApp thread
 	val navigationModelUpdater = NavigationModelUpdater()
 
-	val detailsController = DetailsController()
-
 	fun start(): Boolean {
 		if (AppSettings[AppSettings.KEYS.ENABLED_EVPLANNING].toBoolean()) {
 			try {
@@ -83,7 +81,6 @@ class EVPlanningService(val context: Context, val iDriveConnectionStatus: IDrive
 												CarAppAssetManager(context, "bmwone"),
 												PhoneAppResourcesAndroid(context),
 												GraphicsHelpersAndroid(),
-												detailsController,
 												routingServiceUpdater.rawCarDataListener,
 												settings, navigationController)
 
