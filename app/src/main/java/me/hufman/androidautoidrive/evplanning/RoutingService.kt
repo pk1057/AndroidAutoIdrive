@@ -198,51 +198,53 @@ class RoutingService(private val planning: Planning, private val routingDataList
 		}
 	}
 
-	private fun closestRoute(ruler: PositionRuler, plan: Plan): RouteDistance? {
-		return plan.routes?.mapIndexed { index, route ->
-			(closestStepByPath(ruler, route)
-					?: closestStepByStep(ruler, route))
-					?.let { RouteDistance.fromStep(index, it) }
-		}?.filterNotNull()?.minWithOrNull { o1, o2 ->
-			o1.distance.compareTo(o2.distance)
-		}
-	}
-
-	private fun closestStepByPath(ruler: PositionRuler, route: Route): StepDistance? {
-
-		return route.steps?.mapIndexed { index, step ->
-			closestPathStep(ruler, step)?.let { StepDistance.fromPath(index, it) }
-		}?.filterNotNull()?.minWithOrNull { o1, o2 ->
-			o1.distance.compareTo(o2.distance)
-		}
-	}
-
-	private fun closestStepByStep(ruler: PositionRuler, route: Route): StepDistance? {
-
-		class Previous(val step: Step? = null, val stepDistance: StepDistance? = null)
-
-		return route.steps?.foldRightIndexed(Previous(), { index, step, previous ->
-			if (previous.step == null) {
-				Previous(step, null)
-			} else {
-				val distance = ruler.pointToSegmentDistance(step, previous.step)
-				Previous(
-						step,
-						if (previous.stepDistance == null || previous.stepDistance.distance > distance) {
-							StepDistance.fromStep(index, distance)
-						} else {
-							previous.stepDistance
-						}
-				)
+	companion object {
+		fun closestRoute(ruler: PositionRuler, plan: Plan): RouteDistance? {
+			return plan.routes?.mapIndexed { index, route ->
+				(closestStepByPath(ruler, route)
+						?: closestStepByStep(ruler, route))
+						?.let { RouteDistance.fromStep(index, it) }
+			}?.filterNotNull()?.minWithOrNull { o1, o2 ->
+				o1.distance.compareTo(o2.distance)
 			}
-		})?.stepDistance
-	}
+		}
 
-	private fun closestPathStep(ruler: PositionRuler, step: Step): PathStepDistance? {
-		return step.path?.mapIndexed { index, pathStep ->
-			PathStepDistance(index, ruler.squareDistance(pathStep))
-		}?.minWithOrNull { o1, o2 -> o1.distance.compareTo(o2.distance) }?.let {
-			PathStepDistance(it.pathStepIndex, sqrt(it.distance))
+		fun closestStepByPath(ruler: PositionRuler, route: Route): StepDistance? {
+
+			return route.steps?.mapIndexed { index, step ->
+				closestPathStep(ruler, step)?.let { StepDistance.fromPath(index, it) }
+			}?.filterNotNull()?.minWithOrNull { o1, o2 ->
+				o1.distance.compareTo(o2.distance)
+			}
+		}
+
+		fun closestStepByStep(ruler: PositionRuler, route: Route): StepDistance? {
+
+			class Previous(val step: Step? = null, val stepDistance: StepDistance? = null)
+
+			return route.steps?.foldRightIndexed(Previous(), { index, step, previous ->
+				if (previous.step == null) {
+					Previous(step, null)
+				} else {
+					val distance = ruler.pointToSegmentDistance(step, previous.step)
+					Previous(
+							step,
+							if (previous.stepDistance == null || previous.stepDistance.distance > distance) {
+								StepDistance.fromStep(index, distance)
+							} else {
+								previous.stepDistance
+							}
+					)
+				}
+			})?.stepDistance
+		}
+
+		fun closestPathStep(ruler: PositionRuler, step: Step): PathStepDistance? {
+			return step.path?.mapIndexed { index, pathStep ->
+				PathStepDistance(index, ruler.squareDistance(pathStep))
+			}?.minWithOrNull { o1, o2 -> o1.distance.compareTo(o2.distance) }?.let {
+				PathStepDistance(it.pathStepIndex, sqrt(it.distance))
+			}
 		}
 	}
 }

@@ -78,36 +78,47 @@ class NavigationModelUpdater() {
 				val now = LocalDateTime.now()
 
 				route.steps?.filterIndexed { index, step ->
-					index >= routingData.routeDistance.stepIndex
+					index == routingData.routeDistance.stepIndex
+							|| (index > routingData.routeDistance.stepIndex && step.is_charger == true)
+							|| index == route.steps.size - 1
 				}?.foldIndexed(Acc(), { index, acc, step ->
-					if ((step.is_charger == true || step.is_end_station == true)
-							&& (index > 0 || routingData.routeDistance.pathStepIndex == null || routingData.routeDistance.pathStepIndex < 2)) {
-
-						val nameParts = step.name?.let { NAME_MATCHER.matchEntire(it) }?.groupValues
+					if (index > 0 || step.is_charger == true && (routingData.routeDistance.pathStepIndex == null || routingData.routeDistance.pathStepIndex < 2)) {
 
 						val eta = when (index) {
 							0 -> 0
 							else -> step.arrival_duration?.let { start_time?.minus(it) }
 						}?.let { now.plusSeconds(it.toLong()) }
 
+						val nameParts = step.name?.let { NAME_MATCHER.matchEntire(it) }?.groupValues
+						val operator = nameParts?.getOrNull(2)
+
 						acc.list.add(NavigationEntry(
-								title = nameParts?.getOrNull(1) ?: "- unknown -",
-								operator = nameParts?.lastOrNull() ?: "",
-								type = step.charger_type?.toUpperCase() ?: "",
-								address = step.charger?.address ?: "- no address -",
-								trip_dst = step.departure_dist?.let { start_dist?.minus(it) }?.let { formatDistance(it) }
-										?: "--",
+								title = nameParts?.getOrNull(1)?.takeIf { it.isNotEmpty() }
+										?: step.name?.takeIf { it.isNotEmpty() }
+										?: L.EVPLANNING_UNKNOWN_LOC,
+								operator = step.charger?.network_name
+										?: operator?.takeIf { it.isNotEmpty() },
+								type = step.charger_type?.let { if (it.equals("0")) null else it.toUpperCase() },
+								address = step.charger?.address
+										?: String.format("%.5f %.5f", step.lat, step.lon),
+								trip_dst = step.departure_dist?.let { start_dist?.minus(it) }?.let { formatDistance(it) },
 								step_dst = when (index) {
 									0 -> step.departure_dist?.let { start_dist?.minus(it) }
 									1 -> step.arrival_dist?.let { start_dist?.minus(it) }
-									else -> acc.previous?.drive_dist
-								}?.let { formatDistance(it) } ?: "--",
-								soc_ariv = step.arrival_perc?.toString() ?: "",
-								soc_dep = step.departure_perc?.toString() ?: "",
-								eta = eta?.format(TIME_FMT) ?: "--:--",
-								etd = step.charge_duration?.let { eta?.plusSeconds(it.toLong()) }?.format(TIME_FMT)
-										?: "--:--",
-								duration = step.charge_duration?.div(60)?.toString() ?: "-",
+									else -> step.arrival_dist?.let { acc.previous?.departure_dist?.minus(it) }
+											?: acc.previous?.drive_dist
+								}?.let { formatDistance(it) },
+								soc_ariv = step.arrival_perc?.toString(),
+								soc_dep = if (step.is_charger == true) {
+									step.departure_perc?.toString()
+								} else null,
+								eta = eta?.format(TIME_FMT),
+								etd = if (step.is_charger == true) {
+									step.charge_duration?.let { eta?.plusSeconds(it.toLong()) }?.format(TIME_FMT)
+								} else null,
+								duration = if (step.is_charger == true) {
+									step.charge_duration?.div(60)?.toString()
+								} else null,
 								lat = step.lat,
 								lon = step.lon,
 						))

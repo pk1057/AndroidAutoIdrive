@@ -20,18 +20,18 @@ package me.hufman.androidautoidrive.evplanning
 import android.graphics.drawable.Drawable
 
 data class NavigationEntry(
-		val icon: Drawable? = null, // the icon in the main list
-		val title: String = "",     // first line of text
-		val operator: String = "",
-		val type: String = "",      // details
-		val address: String = "",
-		val trip_dst: String = "",  // distance
-		val step_dst: String = "",  // distance since last stop
-		val soc_ariv: String = "",  // estimated state of charge on arrival
-		val soc_dep: String = "",   // recommended state of charge at departure
-		val eta: String = "",       // estimated time of arrival
-		val etd: String = "",       // estimated time of departure
-		val duration: String = "",
+		val icon: Drawable? = null,   // the icon in the main list
+		val title: String,            // first line of text
+		val operator: String? = null,
+		val type: String? = null,     // details
+		val address: String,
+		val trip_dst: String? = null, // distance
+		val step_dst: String? = null, // distance since last stop
+		val soc_ariv: String? = null, // estimated state of charge on arrival
+		val soc_dep: String? = null,  // recommended state of charge at departure
+		val eta: String? = null,      // estimated time of arrival
+		val etd: String? = null,      // estimated time of departure
+		val duration: String? = null,
 		val lat: Double,
 		val lon: Double,
 )

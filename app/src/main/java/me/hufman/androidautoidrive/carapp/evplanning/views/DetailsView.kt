@@ -216,7 +216,15 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 
 		// prepare the notification text
 		val descriptionListData = RHMIModel.RaListModel.RHMIListConcrete(1)
-		val text = "[${entry.operator}] ${entry.type} ${entry.step_dst}km (${entry.trip_dst}km) ${entry.soc_ariv}%-${entry.soc_dep}% (${entry.duration}min) ${entry.eta}-${entry.etd}Uhr"
+		val text = listOfNotNull(
+				entry.operator?.let { "[${it}]" },
+				entry.type,
+				entry.step_dst?.let { "${it}km" },
+				entry.trip_dst?.let { "(${it}km)" },
+				if (entry.soc_dep == null) entry.soc_ariv?.let { "${it}%" } else entry.soc_ariv?.let { "${it}%-${entry.soc_dep}%" },
+				entry.duration?.let { "${it}min"},
+				if (entry.etd == null) entry.eta?.let { "${it}Uhr" } else entry.eta?.let { "${it}-${entry.etd}Uhr" },
+		).joinToString(" ")
 		descriptionListData.addRow(arrayOf(text))
 
 		state.getTextModel()?.asRaDataModel()?.value = title

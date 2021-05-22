@@ -75,6 +75,7 @@ object L {
 	var EVPLANNING_TITLE = "EVPlanning"
 	var EVPLANNING_EMPTY_LIST = "No Charging Stops"
 	var EVPLANNING_OPTIONS = "Options"
+	var EVPLANNING_UNKNOWN_LOC = "Unknown Location"
 
 	fun loadResources(context: Context, locale: Locale? = null) {
 		val thisContext = if (locale == null) { context } else {

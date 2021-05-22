@@ -193,9 +193,15 @@ class NavigationListView(val state: RHMIState, val graphicsHelpers: GraphicsHelp
 			navigationListView.getModel()?.value = object : RHMIListAdapter<NavigationEntry>(5, entries) {
 				override fun convertRow(index: Int, item: NavigationEntry): Array<Any> {
 					val icon = item.icon?.let { graphicsHelpers.compress(it, 48, 48) } ?: ""
-					val text = "${item.title}\n[${item.operator}] ${item.type} ${item.step_dst}km ${item.soc_ariv}%"
-					val arrival = "${item.trip_dst}km\n${item.eta}"
-					return arrayOf(icon, "", text, "", arrival)
+					val details = listOfNotNull(
+							item.operator?.let { "[${it}]" },
+							item.type,
+							item.step_dst?.let { "${it}km" },
+							item.soc_ariv?.let { "${it}%" },
+					).joinToString(" ")
+					val trip_dst = item.trip_dst?.let { "${it}km" } ?: "-"
+					val eta = item.eta ?: "--:--"
+					return arrayOf(icon, "", "${item.title}\n${details}", "", "${trip_dst}\n${eta}")
 				}
 			}
 		}
