@@ -21,22 +21,36 @@ import android.content.Context
 import android.location.Address
 import me.hufman.androidautoidrive.carapp.navigation.NavigationParser
 import me.hufman.androidautoidrive.carapp.navigation.NavigationTriggerSender
+import me.hufman.androidautoidrive.evplanning.DisplayRoute
 import java.util.*
 
 class NavigationController(val context: Context, val navigationModel: NavigationModel) {
 
-	fun selectNavigationEntry(index: Int): Boolean {
+	fun selectRoute(index: Int): Boolean {
 		with(navigationModel) {
-			selectedNavigationEntry = navigationEntries?.getOrNull(index)
-			return selectedNavigationEntry != null
+			selectedRouteIndex = index
+			selectedRoute = displayRoutes?.getOrNull(index)?.displayWaypoints
+			selectedRouteValid = displayRoutesValid
+			selectedRouteObserver?.invoke()
+			return selectedRoute != null
 		}
 	}
 
-	fun navigateToSelectedEntry() {
-		navigationModel.selectedNavigationEntry?.let { entry ->
+	fun selectWaypoint(index: Int): Boolean {
+		with(navigationModel) {
+			selectedWaypointIndex = index
+			selectedWaypoint = selectedRoute?.getOrNull(index)
+			selectedWaypointValid = selectedRouteValid
+			selectedWaypointObserver?.invoke()
+			return selectedWaypoint != null
+		}
+	}
+
+	fun navigateToWaypoint() {
+		navigationModel.selectedWaypoint?.let { entry ->
 			Address(Locale.getDefault()).apply {
 				thoroughfare = entry.address
-				featureName = "${entry.title} [${entry.operator}] ${entry.type}"
+				featureName = "${entry.title} [${entry.operator}] ${entry.charger_type}"
 				latitude = entry.lat
 				longitude = entry.lon
 			}.let {
@@ -44,6 +58,37 @@ class NavigationController(val context: Context, val navigationModel: Navigation
 			}.let {
 				NavigationTriggerSender(context).triggerNavigation(it)
 			}
+		}
+	}
+
+	fun setDisplayRoutes(newDisplayRoutes: List<DisplayRoute>?) {
+		navigationModel.apply {
+			displayRoutes = newDisplayRoutes
+			displayRoutesValid = true
+			displayRoutesObserver?.invoke()
+			selectedRouteIndex?.let {
+				selectedRoute = displayRoutes?.getOrNull(it)?.displayWaypoints
+				selectedRouteValid = true
+				selectedRouteObserver?.invoke()
+			}
+			selectedWaypointIndex?.let {
+				selectedWaypoint = selectedRoute?.getOrNull(it)
+				selectedWaypointValid = true
+				selectedWaypointObserver?.invoke()
+			}
+		}
+	}
+
+	fun invalidateAll() {
+		navigationModel.apply {
+			displayRoutesValid = false
+			selectedRouteValid = false
+			selectedWaypointValid = false
+			selectedRouteIndex = null // delete the indices only so anything that is on screen will stay for now
+			selectedWaypointIndex = null
+			displayRoutesObserver?.invoke()
+			selectedRouteObserver?.invoke()
+			selectedWaypointObserver?.invoke()
 		}
 	}
 }

@@ -320,7 +320,15 @@
     <string name="MUSIC_SPOTIFY_THUMBS_DOWN_SELECTED">Thumbed Down</string>
 
     <string name="EVPLANNING_TITLE">EVPlanning</string>
+    <string name="EVPLANNING_TITLE_ROUTES">EVPlanning - Routes</string>
+    <string name="EVPLANNING_TITLE_WAYPOINTS">EVPlanning - Waypoints</string>
+    <string name="EVPLANNING_TITLE_ALTERNATIVES">EVPlanning - Alternatives</string>
+
     <string name="EVPLANNING_EMPTY_LIST">No Charging Stops</string>
+    <string name="EVPLANNING_ACTIONS">Actions</string>
     <string name="EVPLANNING_OPTIONS">Options</string>
     <string name="EVPLANNING_UNKNOWN_LOC">Unknown Location</string>
+    <string name="EVPLANNING_WAYPOINT">iDrive Waypoint</string>
+    <string name="EVPLANNING_INVALID">Outdated</string>
+    <string name="EVPLANNING_OFFSET">Offset</string>
 </resources>

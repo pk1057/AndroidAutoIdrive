@@ -74,11 +74,10 @@ class EVPlanningService(val context: Context, val iDriveConnectionStatus: IDrive
 										val navigationModel = NavigationModel()
 										val navigationController = NavigationController(context, navigationModel)
 										// other threads use navigationModelUpdater for asynchronous updates
-										navigationModelUpdater.navigationModel = navigationModel
+										navigationModelUpdater.navigationController = navigationController
 
 										carApplication = EVPlanningApplication(iDriveConnectionStatus, securityAccess,
 												CarAppAssetManager(context, "basecoreOnlineServices"),
-												CarAppAssetManager(context, "bmwone"),
 												PhoneAppResourcesAndroid(context),
 												GraphicsHelpersAndroid(),
 												routingServiceUpdater.rawCarDataListener,

@@ -21,17 +21,14 @@ import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.androidautoidrive.PhoneAppResources
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
 import me.hufman.androidautoidrive.carapp.evplanning.*
-import me.hufman.androidautoidrive.evplanning.NavigationEntry
+import me.hufman.androidautoidrive.evplanning.DisplayWaypoint
 import me.hufman.androidautoidrive.carapp.RHMIModelType
-import me.hufman.idriveconnectionkit.android.CarAppResources
+import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.TIME_FMT
+import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistance
 import me.hufman.idriveconnectionkit.rhmi.*
 import java.util.ArrayList
 
-interface DetailsListener {
-	fun onListentryAction(index: Int, invokedBy: Int?)
-}
-
-class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers,
+class DetailsView(val state: RHMIState, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers,
                   val settings: EVPlanningSettings,
                   val focusTriggerController: FocusTriggerController,
                   val navigationModel: NavigationModel,
@@ -40,7 +37,7 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 		fun fits(state: RHMIState): Boolean {
 			return state is RHMIState.ToolbarState &&
 					state.componentsList.filterIsInstance<RHMIComponent.List>().firstOrNull {
-						it.getModel()?.modelType == "Richtext"
+						it.getModel()?.modelType?.let { RHMIModelType.of(it) } == RHMIModelType.RICHTEXT
 					} != null
 		}
 		const val MAX_LENGTH = 10000
@@ -51,7 +48,7 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 	val addressWidget: RHMIComponent.List    // the widget to display the title in
 	val descriptionWidget: RHMIComponent.List     // the widget to display the text
 	val imageWidget: RHMIComponent.Image
-	lateinit var inputView: RHMIState
+//	lateinit var inputView: RHMIState
 
 	var visible = false
 
@@ -64,12 +61,11 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 			RHMIModelType.of(it.getModel()?.modelType) == RHMIModelType.RICHTEXT
 		}
 		imageWidget = state.componentsList.filterIsInstance<RHMIComponent.Image>().first()
-		carAppResources.getImagesDB("common")
 	}
 
-	fun initWidgets(listView: NavigationListView, inputState: RHMIState) {
+	fun initWidgets(listView: WaypointsListView) { //, inputState: RHMIState) {
 		state as RHMIState.ToolbarState
-		this.inputView = inputState
+//		this.inputView = inputState
 
 		state.focusCallback = FocusCallback { focused ->
 			visible = focused
@@ -77,10 +73,10 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 				show()
 
 				// read out
-				val selectedEntry = navigationModel.selectedNavigationEntry
-				if (selectedEntry != null) {
+//				val selectedEntry = navigationModel.selectedWaypoint
+//				if (selectedEntry != null) {
 //					readoutInteractions.triggerDisplayReadout(selectedNotification)
-				}
+//				}
 			}
 		}
 		state.visibleCallback = VisibleCallback { visible ->
@@ -116,49 +112,13 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 			setEnabled(true)
 			setSelectable(true)
 		}
-		titleWidget.getAction()?.asRAAction()?.rhmiActionCallback = object: RHMIActionListCallback {
-			override fun onAction(index: Int, invokedBy: Int?) {
-//				listener.onListentryAction(index,invokedBy)
-			}
-		}
 		addressWidget.getAction()?.asRAAction()?.rhmiActionCallback = object: RHMIActionListCallback {
 			override fun onAction(index: Int, invokedBy: Int?) {
 				onAddressClicked?.invoke()
 			}
 		}
-		descriptionWidget.getAction()?.asRAAction()?.rhmiActionCallback = object: RHMIActionListCallback {
-			override fun onAction(index: Int, invokedBy: Int?) {
-//				listener.onListentryAction(index,invokedBy)
-			}
-		}
-
-		val buttons = ArrayList(state.toolbarComponentsList).filterIsInstance<RHMIComponent.ToolbarButton>().filter { it.action > 0}
-		state.toolbarComponentsList.forEach {
-			if (it.getAction() != null) {
-				it.setSelectable(false)
-				it.setEnabled(false)
-				it.setVisible(true)
-			}
-		}
-		buttons[0].getImageModel()?.asImageIdModel()?.imageId = 150
-		buttons[0].setVisible(true)
-		buttons[0].setSelectable(true)
-		buttons.subList(1, 6).forEach {
-			it.getImageModel()?.asImageIdModel()?.imageId = 158
-		}
-		buttons.forEach {
-			// go back to the main list when an action is clicked
-			it.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = listView.state.id
-		}
 
 		this.listState = listView.state
-	}
-
-	/**
-	 * When we detect that the car is in Parked mode, lock the SpeedLock setting to stay unlocked
-	 */
-	fun lockSpeedLock() {
-		state.setProperty(RHMIProperty.PropertyId.SPEEDLOCK, false)
 	}
 
 	fun hide() {
@@ -189,15 +149,20 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 		// find the notification, or bail to the list
 		//TODO: implement retrival of navigationEntry from list
 		//val notification = NotificationsState.getNotificationByKey(selectedNavigationEntry?.key)
-		val entry: NavigationEntry? = navigationModel.selectedNavigationEntry
-		if (entry == null) {
+		val display: DisplayWaypoint? = navigationModel.selectedWaypoint
+		if (display == null) {
 			focusTriggerController.focusState(listState, false)
 			return
 		}
 
 		// prepare the app icon and title
-		val icon = entry.icon?.let {graphicsHelpers.compress(it, 48, 48)} ?: ""
-		val title = entry.title
+		val icon = display.icon?.let {graphicsHelpers.compress(it, 48, 48)} ?: ""
+		val title = listOfNotNull(
+				display.title ?: L.EVPLANNING_UNKNOWN_LOC,
+				if (!navigationModel.selectedWaypointValid) {
+					"[${L.EVPLANNING_INVALID}]"
+				} else null,
+		).joinToString(" ")
 		val titleListData = RHMIModel.RaListModel.RHMIListConcrete(3)
 		titleListData.addRow(arrayOf(icon, "", title))
 
@@ -205,7 +170,7 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 		var sidePictureWidth = 0
 		val addressListData = RHMIModel.RaListModel.RHMIListConcrete(2)
 //		if (navigationEntry.sidePicture == null || navigationEntry.sidePicture.intrinsicHeight <= 0) {
-			addressListData.addRow(arrayOf("", entry.address))
+			addressListData.addRow(arrayOf("", display.address))
 //		} else {
 //			val sidePictureHeight = 96  // force the side picture to be this tall
 //			sidePictureWidth = (sidePictureHeight.toFloat() / navigationEntry.sidePicture.intrinsicHeight * navigationEntry.sidePicture.intrinsicWidth).toInt()
@@ -216,15 +181,33 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 
 		// prepare the notification text
 		val descriptionListData = RHMIModel.RaListModel.RHMIListConcrete(1)
+		val dist = listOfNotNull(
+				display.step_dst?.let { formatDistance(it) },
+				display.trip_dst?.let { "(${formatDistance(it)})" },
+		).joinToString(" ").takeIf { it.isNotEmpty() }
+		val charger = listOfNotNull(
+				display.operator?.let { "[${it}]" },
+				display.charger_type,
+		).joinToString(" ").takeIf { it.isNotEmpty() }
+		val soc = listOfNotNull(
+				display.soc_ariv?.let { "${it}%" },
+				display.soc_dep?.let { "${it}%" },
+		).joinToString("-").takeIf { it.isNotEmpty() }
+		val time = listOfNotNull(
+				display.duration?.let { "${it}min" },
+				if (display.etd == null)
+					display.eta?.let { "${it.format(TIME_FMT)}Uhr" }
+				else
+					display.eta?.let { "${it.format(TIME_FMT)}-${display.etd.format(TIME_FMT)}Uhr" },
+		).joinToString(" ").takeIf { it.isNotEmpty() }
+
 		val text = listOfNotNull(
-				entry.operator?.let { "[${it}]" },
-				entry.type,
-				entry.step_dst?.let { "${it}km" },
-				entry.trip_dst?.let { "(${it}km)" },
-				if (entry.soc_dep == null) entry.soc_ariv?.let { "${it}%" } else entry.soc_ariv?.let { "${it}%-${entry.soc_dep}%" },
-				entry.duration?.let { "${it}min"},
-				if (entry.etd == null) entry.eta?.let { "${it}Uhr" } else entry.eta?.let { "${it}-${entry.etd}Uhr" },
-		).joinToString(" ")
+				if (display.is_waypoint) L.EVPLANNING_WAYPOINT else null,
+				charger,
+				dist,
+				soc,
+				time,
+		).joinToString("\n")
 		descriptionListData.addRow(arrayOf(text))
 
 		state.getTextModel()?.asRaDataModel()?.value = title
@@ -257,46 +240,5 @@ class DetailsView(val state: RHMIState, val carAppResources: CarAppResources, va
 		} else {
 			imageWidget.setVisible(false)
 		}
-
-		// find and enable the clear button
-		val buttons = ArrayList(state.toolbarComponentsList).filterIsInstance<RHMIComponent.ToolbarButton>().filter { it.action > 0}
-//		val clearButton = buttons[0]
-//		if (navigationEntry.isClearable) {
-//			clearButton.setEnabled(true)
-//			clearButton.getTooltipModel()?.asRaDataModel()?.value = L.NOTIFICATION_CLEAR_ACTION
-//			clearButton.getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionButtonCallback {
-//				controller.clear(navigationEntry.key)
-//			}
-//		} else {
-//			clearButton.setEnabled(false)
-//		}
-
-		// enable any custom actions
-//		(0..4).forEach {i ->
-//			val action = navigationEntry.actions.getOrNull(i)
-//			val button = buttons[1+i]
-//			if (action == null) {
-//				button.setEnabled(false)
-//				button.setSelectable(false)
-//				button.getAction()?.asRAAction()?.rhmiActionCallback = null // don't leak memory
-//			} else {
-//				button.setEnabled(true)
-//				button.setSelectable(true)
-//				button.getTooltipModel()?.asRaDataModel()?.value = action.name.toString()
-//				button.getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionButtonCallback {
-//					if (action.supportsReply ) {
-//						// show input to reply
-//						button.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = inputView.id
-//						val replyController = ReplyControllerNotification(notification, action, controller, ABRPSettings.quickReplies)
-//						ReplyView(listState, inputView, replyController)
-//						readoutInteractions.cancel()
-//					} else {
-//						// trigger the custom action
-//						controller.action(navigationEntry.key, action.name.toString())
-//						button.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = listState.id
-//					}
-//				}
-//			}
-//		}
 	}
 }

@@ -36,6 +36,11 @@ data class CarData(
 		val externalTemperature: Int = Int.MIN_VALUE,
 )
 
+/*
+ * The purpose of the RoutingServiceUpdater is to post aggregated data
+ * from the carapp to the RoutingService running on it's own thread
+ * Aggregated data is posted once a second
+ */
 class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 
 	var threadRouting: CarThread? = null
@@ -98,12 +103,6 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 
 		override fun onExternalTemperatureChanged(externalTemperature: Int) {
 			this@RoutingServiceUpdater.externalTemperature = externalTemperature
-		}
-	}
-
-	fun setCurrentRoute(current: Int) {
-		threadRouting?.post {
-			routingService?.setCurrentRoute(current)
 		}
 	}
 

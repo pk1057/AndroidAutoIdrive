@@ -73,9 +73,16 @@ object L {
 	var MUSIC_SPOTIFY_THUMBS_DOWN_SELECTED = "Thumbed Down"    // not sure if this exists, but just to be complete
 
 	var EVPLANNING_TITLE = "EVPlanning"
+	var EVPLANNING_TITLE_ROUTES = "EVPlanning - Routes"
+	var EVPLANNING_TITLE_WAYPOINTS = "EVPlanning - Waypoints"
+	var EVPLANNING_TITLE_ALTERNATIVES = "EVPlanning - Alternatives"
 	var EVPLANNING_EMPTY_LIST = "No Charging Stops"
+	var EVPLANNING_ACTIONS = "Actions"
 	var EVPLANNING_OPTIONS = "Options"
 	var EVPLANNING_UNKNOWN_LOC = "Unknown Location"
+	var EVPLANNING_WAYPOINT = "iDrive Waypoint"
+	var EVPLANNING_INVALID = "Outdated"
+	var EVPLANNING_OFFSET = "Offset"
 
 	fun loadResources(context: Context, locale: Locale? = null) {
 		val thisContext = if (locale == null) { context } else {

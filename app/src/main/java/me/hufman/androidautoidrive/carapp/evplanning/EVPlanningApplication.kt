@@ -28,7 +28,6 @@ import de.bmw.idrive.BaseBMWRemotingClient
 import me.hufman.androidautoidrive.*
 import me.hufman.androidautoidrive.carapp.*
 import me.hufman.androidautoidrive.carapp.evplanning.views.*
-import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningDataViewModel
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.androidautoidrive.utils.removeFirst
 import me.hufman.idriveconnectionkit.CDS
@@ -67,7 +66,7 @@ interface CarDataListenerRaw {
 	fun onExternalTemperatureChanged(externalTemperature: Int)
 }
 
-class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, val securityAccess: SecurityAccess, val carAppAssets: CarAppResources, val carAppAssets2: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers, private val cardataListenerRaw: CarDataListenerRaw, val settings: EVPlanningSettings, val navigationController: NavigationController) {
+class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, val securityAccess: SecurityAccess, val carAppAssets: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers, private val cardataListenerRaw: CarDataListenerRaw, val settings: EVPlanningSettings, val navigationController: NavigationController) {
 	var handler: Handler? = null
 	val carappListener: CarAppListener
 	var rhmiHandle: Int = -1
@@ -81,9 +80,10 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 	var hmiContextWidgetType: String = ""
 
 	// carapp views
-	val viewList: NavigationListView      // show a list of active notifications
+	val viewRoutesList: RoutesListView      // show a list of active notifications
+	val viewWaypointList: WaypointsListView      // show a list of active notifications
 	val viewDetails: DetailsView            // view a notification with actions to do
-	val stateInput: RHMIState.PlainState    // show a reply input form
+//	val stateInput: RHMIState.PlainState    // show a reply input form
 
 	// to suppress redundant calls to the listener car data being received from the car is cached to detect changes
 	var drivingMode: Int = 0
@@ -123,22 +123,23 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				recreateRhmiApp()
 			}
 
-			val notificationIconEvent = carApp.events.values.filterIsInstance<RHMIEvent.NotificationIconEvent>().first()
+//			val notificationIconEvent = carApp.events.values.filterIsInstance<RHMIEvent.NotificationIconEvent>().first()
 
 			val unclaimedStates = LinkedList(carApp.states.values)
 
 			// figure out which views to use
-			viewList = NavigationListView(unclaimedStates.removeFirst { NavigationListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel)
-			viewDetails = DetailsView(unclaimedStates.removeFirst { DetailsView.fits(it) }, carAppAssets2, phoneAppResources, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel)
+			viewRoutesList = RoutesListView(unclaimedStates.removeFirst { RoutesListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel)
+			viewWaypointList = WaypointsListView(unclaimedStates.removeFirst { WaypointsListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel)
+			viewDetails = DetailsView(unclaimedStates.removeFirst { DetailsView.fits(it) }, phoneAppResources, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel)
 
-			stateInput = carApp.states.values.filterIsInstance<RHMIState.PlainState>().first {
-				it.componentsList.filterIsInstance<RHMIComponent.Input>().isNotEmpty()
-			}
+//			stateInput = carApp.states.values.filterIsInstance<RHMIState.PlainState>().first {
+//				it.componentsList.filterIsInstance<RHMIComponent.Input>().isNotEmpty()
+//			}
 
 			carApp.components.values.filterIsInstance<RHMIComponent.EntryButton>().forEach {
-				it.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = viewList.state.id
+				it.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = viewWaypointList.state.id
 				it.getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionButtonCallback {
-					viewList.entryButtonTimestamp = System.currentTimeMillis()
+					viewWaypointList.entryButtonTimestamp = System.currentTimeMillis()
 				}
 			}
 
@@ -147,11 +148,12 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 			// set up the AM icon in the Navigation section
 			createAmApp()
 
-			// set up the list
-			viewList.initWidgets()
+			// set up the lists
+			viewRoutesList.initWidgets()
+			viewWaypointList.initWidgets()
 
 			// set up the details view
-			viewDetails.initWidgets(viewList, stateInput)
+			viewDetails.initWidgets(viewWaypointList) //, stateInput)
 
 			// subscribe to CDS for passenger seat info
 			cdsData.setConnection(CDSConnectionEtch(carConnection))
@@ -270,15 +272,30 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 		}
 
 		with(navigationController) {
-			navigationModel.navigationEntriesObserver = {
+
+			navigationModel.displayRoutesObserver = {
+				viewRoutesList.redrawRoutes()
 			}
 
-			navigationModel.selectedNavigationEntryObserver = {
+			navigationModel.selectedRouteObserver = {
+				viewWaypointList.redrawWaypoints()
+			}
+
+			navigationModel.selectedWaypointObserver = {
+				viewDetails.redraw()
 			}
 		}
 
-		viewList.onNavigationListViewClicked = {
-			if (navigationController.selectNavigationEntry(it)) {
+		viewRoutesList.onRoutesListClicked = {
+			if (navigationController.selectRoute(it)) {
+				showWaypointsViewFromListAction()
+			} else {
+				hideWaypointsViewFromListAction()
+			}
+		}
+
+		viewWaypointList.onWaypointListClicked = {
+			if (navigationController.selectWaypoint(it)) {
 				showDetailsViewFromListAction()
 			} else {
 				hideDetailsViewFromListAction()
@@ -286,7 +303,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 		}
 
 		viewDetails.onAddressClicked = {
-			navigationController.navigateToSelectedEntry()
+			navigationController.navigateToWaypoint()
 		}
 	}
 
@@ -354,7 +371,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				3 to AMCategory.NAVIGATION.value,   // section
 				4 to true,
 				5 to 800,   // weight
-				8 to viewList.state.id  // mainstateId
+				8 to viewRoutesList.state.id  // mainstateId
 		)
 		// language translations, dunno which one is which
 		for (languageCode in 101..123) {
@@ -378,8 +395,8 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 
 		override fun am_onAppEvent(handle: Int?, ident: String?, appId: String?, event: BMWRemoting.AMEvent?) {
 			synced()
-			viewList.entryButtonTimestamp = System.currentTimeMillis()
-			focusTriggerController.focusState(viewList.state, true)
+			viewWaypointList.entryButtonTimestamp = System.currentTimeMillis()
+			focusTriggerController.focusState(viewRoutesList.state, true)
 			createAmApp()
 		}
 
@@ -429,7 +446,8 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 
 	fun onCreate(context: Context, handler: Handler) {
 		this.handler = handler
-		viewList.onCreate(handler)
+		viewRoutesList.onCreate(handler)
+		viewWaypointList.onCreate(handler)
 	}
 
 	fun onDestroy(context: Context) {
@@ -445,11 +463,19 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 		}
 	}
 
+	fun showWaypointsViewFromListAction() {
+		viewRoutesList.routesList.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = viewWaypointList.state.id
+	}
+
+	fun hideWaypointsViewFromListAction() {
+		viewRoutesList.routesList.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = 0
+	}
+
 	fun showDetailsViewFromListAction() {
-		viewList.navigationListView.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = viewDetails.state.id
+		viewWaypointList.waypointsList.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = viewDetails.state.id
 	}
 
 	fun hideDetailsViewFromListAction() {
-		viewList.navigationListView.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = 0
+		viewWaypointList.waypointsList.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = 0
 	}
 }
