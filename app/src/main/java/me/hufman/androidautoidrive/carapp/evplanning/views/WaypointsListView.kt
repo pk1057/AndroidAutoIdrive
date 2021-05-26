@@ -26,17 +26,14 @@ import me.hufman.androidautoidrive.carapp.RHMIListAdapter
 import me.hufman.androidautoidrive.carapp.evplanning.*
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.TIME_FMT
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistance
-import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistanceDetailed
-import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatTime
 import me.hufman.androidautoidrive.carapp.evplanning.TAG
-import me.hufman.androidautoidrive.evplanning.DisplayRoute
 import me.hufman.androidautoidrive.evplanning.DisplayWaypoint
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.idriveconnectionkit.rhmi.*
 import kotlin.reflect.KClass
 
 class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers, val settings: EVPlanningSettings,
-                        val focusTriggerController: FocusTriggerController, val navigationModel: NavigationModel) {
+                        val focusTriggerController: FocusTriggerController, val navigationModel: NavigationModel, val carAppImages: Map<String, ByteArray>) {
 	companion object {
 		const val INTERACTION_DEBOUNCE_MS = 2000              // how long to wait after lastInteractionTime to update the list
 		const val SKIPTHROUGH_THRESHOLD = 2000                // how long after an entrybutton push to allow skipping through to a current notification
@@ -82,6 +79,8 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 	var deferredUpdate: DeferredUpdate? = null  // wrapper object to help debounce user inputs
 	var lastInteractionIndex: Int = -1       // what index the user last selected
 
+	val iconFlag: ByteArray?
+
 	val emptyListData = RHMIModel.RaListModel.RHMIListConcrete(5).apply {
 		addRow(arrayOf("", L.EVPLANNING_EMPTY_LIST, "", "", ""))
 	}
@@ -120,6 +119,8 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 		actionsList = components.removeFirst() as RHMIComponent.List
 		settingsLabel = components.removeFirst() as RHMIComponent.Label
 		settingsList = components.removeFirst() as RHMIComponent.List
+
+		iconFlag = carAppImages["153.png"]
 	}
 
 	fun initWidgets() { // showNavigationEntryController: ShowNavigationEntryController) {
@@ -244,9 +245,8 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 			//5 columns: icon, title, dist, soc, eta
 			waypointsList.getModel()?.value = object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
 				override fun convertRow(index: Int, waypoint: DisplayWaypoint): Array<Any> {
-					val icon = waypoint.icon?.let { graphicsHelpers.compress(it, 48, 48) } ?: ""
+					val icon = if (waypoint.is_waypoint) iconFlag ?: "" else ""
 					val firstLine = listOfNotNull(
-							if (waypoint.is_waypoint) "[*]" else null,
 							waypoint.title ?: L.EVPLANNING_UNKNOWN_LOC,
 							addition
 					).joinToString(" ")

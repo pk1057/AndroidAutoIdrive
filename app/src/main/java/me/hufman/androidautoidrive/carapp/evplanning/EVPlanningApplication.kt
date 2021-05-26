@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package me.hufman.androidautoidrive.carapp.evplanning
 
 import android.content.Context
-import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.util.Log
 import com.google.gson.Gson
@@ -29,6 +28,7 @@ import me.hufman.androidautoidrive.*
 import me.hufman.androidautoidrive.carapp.*
 import me.hufman.androidautoidrive.carapp.evplanning.views.*
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
+import me.hufman.androidautoidrive.utils.Utils
 import me.hufman.androidautoidrive.utils.removeFirst
 import me.hufman.idriveconnectionkit.CDS
 import me.hufman.idriveconnectionkit.IDriveConnection
@@ -66,7 +66,7 @@ interface CarDataListenerRaw {
 	fun onExternalTemperatureChanged(externalTemperature: Int)
 }
 
-class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, val securityAccess: SecurityAccess, val carAppAssets: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers, private val cardataListenerRaw: CarDataListenerRaw, val settings: EVPlanningSettings, val navigationController: NavigationController) {
+class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, val securityAccess: SecurityAccess, val carAppAssets: CarAppResources, val carAppAssetsIcons: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers, private val cardataListenerRaw: CarDataListenerRaw, val settings: EVPlanningSettings, val navigationController: NavigationController) {
 	var handler: Handler? = null
 	val carappListener: CarAppListener
 	var rhmiHandle: Int = -1
@@ -98,6 +98,8 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 	var externalTemperature: Int = Int.MIN_VALUE
 	var internalTemperature: Int = Int.MIN_VALUE
 
+	val carAppImages: Map<String, ByteArray>
+
 	init {
 		val cdsData = CDSDataProvider()
 		carappListener = CarAppListener(cdsData)
@@ -127,10 +129,12 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 
 			val unclaimedStates = LinkedList(carApp.states.values)
 
+			carAppImages = Utils.loadZipfile(carAppAssetsIcons.getImagesDB(iDriveConnectionStatus.brand ?: "common"))
+
 			// figure out which views to use
-			viewRoutesList = RoutesListView(unclaimedStates.removeFirst { RoutesListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel)
-			viewWaypointList = WaypointsListView(unclaimedStates.removeFirst { WaypointsListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel)
-			viewDetails = DetailsView(unclaimedStates.removeFirst { DetailsView.fits(it) }, phoneAppResources, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel)
+			viewRoutesList = RoutesListView(unclaimedStates.removeFirst { RoutesListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel, carAppImages)
+			viewWaypointList = WaypointsListView(unclaimedStates.removeFirst { WaypointsListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel, carAppImages)
+			viewDetails = DetailsView(unclaimedStates.removeFirst { DetailsView.fits(it) }, phoneAppResources, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel, carAppImages)
 
 //			stateInput = carApp.states.values.filterIsInstance<RHMIState.PlainState>().first {
 //				it.componentsList.filterIsInstance<RHMIComponent.Input>().isNotEmpty()
@@ -363,11 +367,10 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 
 	fun createAmApp() {
 		val name = L.EVPLANNING_TITLE
-		val icon: Drawable? = phoneAppResources.getAppIcon("com.iternio.abrpapp")
 		val amInfo = mutableMapOf<Int, Any>(
 				0 to 145,   // basecore version
 				1 to name,  // app name
-				2 to (icon?.let { graphicsHelpers.compress(it, 48, 48) } ?: ""),
+				2 to (carAppImages["153.png"] ?: ""),
 				3 to AMCategory.NAVIGATION.value,   // section
 				4 to true,
 				5 to 800,   // weight

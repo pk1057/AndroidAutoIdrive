@@ -28,10 +28,12 @@ import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Comp
 import me.hufman.idriveconnectionkit.rhmi.*
 import java.util.ArrayList
 
-class DetailsView(val state: RHMIState, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers,
-                  val settings: EVPlanningSettings,
-                  val focusTriggerController: FocusTriggerController,
-                  val navigationModel: NavigationModel,
+class DetailsView(
+		val state: RHMIState, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers,
+		val settings: EVPlanningSettings,
+		val focusTriggerController: FocusTriggerController,
+		val navigationModel: NavigationModel,
+		carAppAssetsIcons: Map<String, ByteArray>,
 ) {
 	companion object {
 		fun fits(state: RHMIState): Boolean {

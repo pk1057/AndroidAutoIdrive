@@ -78,6 +78,7 @@ class EVPlanningService(val context: Context, val iDriveConnectionStatus: IDrive
 
 										carApplication = EVPlanningApplication(iDriveConnectionStatus, securityAccess,
 												CarAppAssetManager(context, "basecoreOnlineServices"),
+												CarAppAssetManager(context, "bmwone"),
 												PhoneAppResourcesAndroid(context),
 												GraphicsHelpersAndroid(),
 												routingServiceUpdater.rawCarDataListener,

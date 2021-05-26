@@ -24,19 +24,18 @@ import me.hufman.androidautoidrive.*
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
 import me.hufman.androidautoidrive.carapp.RHMIListAdapter
 import me.hufman.androidautoidrive.carapp.evplanning.*
-import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.TIME_FMT
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistance
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistanceDetailed
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatTime
 import me.hufman.androidautoidrive.carapp.evplanning.TAG
 import me.hufman.androidautoidrive.evplanning.DisplayRoute
-import me.hufman.androidautoidrive.evplanning.DisplayWaypoint
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.idriveconnectionkit.rhmi.*
 import kotlin.reflect.KClass
 
 class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers, val settings: EVPlanningSettings,
-                     val focusTriggerController: FocusTriggerController, val navigationModel: NavigationModel) {
+                     val focusTriggerController: FocusTriggerController, val navigationModel: NavigationModel, val carAppImages: Map<String, ByteArray>) {
+
 	companion object {
 		const val INTERACTION_DEBOUNCE_MS = 2000              // how long to wait after lastInteractionTime to update the list
 		const val SKIPTHROUGH_THRESHOLD = 2000                // how long after an entrybutton push to allow skipping through to a current notification
@@ -86,6 +85,8 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 		addRow(arrayOf("", L.EVPLANNING_EMPTY_LIST, "", "", ""))
 	}
 
+	val iconFlag: ByteArray?
+
 	val menuSettingsListData = object : RHMIListAdapter<AppSettings.KEYS>(3, settings.getSettings()) {
 		override fun convertRow(index: Int, item: AppSettings.KEYS): Array<Any> {
 			val checked = settings.isChecked(item)
@@ -120,6 +121,8 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 		actionsList = components.removeFirst() as RHMIComponent.List
 		settingsLabel = components.removeFirst() as RHMIComponent.Label
 		settingsList = components.removeFirst() as RHMIComponent.List
+
+		iconFlag = carAppImages["153.png"]
 	}
 
 	fun initWidgets() { // showNavigationEntryController: ShowNavigationEntryController) {
@@ -153,7 +156,7 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 		state.componentsList.forEach { it.setVisible(false) }
 
 		routesList.setVisible(true)
-		routesList.setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "*")
+		routesList.setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*")
 		routesList.setProperty(RHMIProperty.PropertyId.BOOKMARKABLE, true)
 		routesList.getAction()?.asRAAction()?.rhmiActionCallback = object : RHMIActionListCallback {
 			override fun onAction(index: Int, invokedBy: Int?) {
@@ -238,17 +241,16 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 		if (routes.isNullOrEmpty()) {
 			routesList.getModel()?.value = emptyListData
 		} else {
-					//5 columns: icon, title, dist, soc, eta
-			routesList.getModel()?.value = object : RHMIListAdapter<DisplayRoute>(1, routes) {
+			//5 columns: icon, title, dist, soc, eta
+			routesList.getModel()?.value = object : RHMIListAdapter<DisplayRoute>(3, routes) {
 				override fun convertRow(index: Int, route: DisplayRoute): Array<Any> {
-//					val icon = route.icon?.let { graphicsHelpers.compress(it, 300, 300) } ?: ""
+					val icon = if (route.contains_waypoint) iconFlag ?: "" else ""
 					val addition = if (!navigationModel.displayRoutesValid) {
 						"[${L.EVPLANNING_INVALID}]"
 					} else if (route.deviation != null && route.deviation > 50) {
 						"${L.EVPLANNING_OFFSET}: ${formatDistanceDetailed(route.deviation)}"
 					} else null
 					val firstLine =	listOfNotNull(
-							if (route.contains_waypoint) "[*]" else null,
 							route.trip_dst?.let { formatDistance(it) },
 							route.arrival_duration?.let { "(${formatTime(it)}h)" },
 							addition,
@@ -257,7 +259,7 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 							route.num_charges?.let { "${it} charges" },
 							route.charge_duration?.let { "(${formatTime(it)}h)" },
 					).joinToString(" ")
-					return arrayOf("${firstLine}\n${secondLine}")
+					return arrayOf(icon, "", "${firstLine}\n${secondLine}")
 				}
 			}
 		}
