@@ -24,7 +24,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import kotlinx.android.synthetic.main.fragment_evplanningpage.*
 import me.hufman.androidautoidrive.*
-import me.hufman.androidautoidrive.phoneui.visible
+import me.hufman.androidautoidrive.phoneui.ViewHelpers.visible
 
 class EVPlanningPageFragment: Fragment() {
 
