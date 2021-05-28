@@ -2,17 +2,91 @@
 <layout xmlns:android="http://schemas.android.com/apk/res/android">
 
     <data class="EVPlanningSettingsBinding">
+
         <variable
             name="capabilities"
             type="me.hufman.androidautoidrive.phoneui.viewmodels.CarCapabilitiesViewModel" />
+
         <variable
             name="settings"
             type="me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningSettingsModel" />
     </data>
+
     <LinearLayout
-        android:orientation="vertical" android:layout_width="match_parent"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:animateLayoutChanges="true">
+        android:animateLayoutChanges="true"
+        android:orientation="vertical">
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/swAutomaticReplan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/settings_vertical_margin"
+            android:checked="@={settings.enableReplan}"
+            android:text="@string/lbl_evplanning_auto_replan" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/swMaxSpeedOverrideEnable"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/settings_vertical_margin"
+            android:checked="@={settings.maxSpeedDrivemodeEnable}"
+            android:text="@string/lbl_evplanning_max_speed_drivemode_enable" />
+
+        <TableLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:focusableInTouchMode="true">
+
+            <TableRow
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView android:text="@string/lbl_evplanning_max_speed" />
+
+                <EditText
+                    android:id="@+id/txtMaxSpeedOverride"
+                    android:inputType="number"
+                    android:text="@={settings.maxSpeed}" />
+            </TableRow>
+
+            <TableRow
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView android:text="@string/lbl_evplanning_max_speed_comfort" />
+
+                <EditText
+                    android:id="@+id/txtMaxSpeedComfort"
+                    android:inputType="number"
+                    android:text="@={settings.maxSpeedComfort}" />
+            </TableRow>
+
+            <TableRow
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView android:text="@string/lbl_evplanning_max_speed_eco" />
+
+                <EditText
+                    android:id="@+id/txtMaxSpeedEco"
+                    android:inputType="number"
+                    android:text="@={settings.maxSpeedEco}" />
+            </TableRow>
+
+            <TableRow
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView android:text="@string/lbl_evplanning_max_speed_eco_plus" />
+
+                <EditText
+                    android:id="@+id/txtMaxSpeedEcoPlus"
+                    android:inputType="number"
+                    android:text="@={settings.maxSpeedEcoPlus}" />
+            </TableRow>
+        </TableLayout>
 
     </LinearLayout>
 </layout>

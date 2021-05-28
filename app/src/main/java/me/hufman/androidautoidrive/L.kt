@@ -76,6 +76,7 @@ object L {
 	var EVPLANNING_TITLE_ROUTES = "EVPlanning - Routes"
 	var EVPLANNING_TITLE_WAYPOINTS = "EVPlanning - Waypoints"
 	var EVPLANNING_TITLE_ALTERNATIVES = "EVPlanning - Alternatives"
+	var EVPLANNING_REPLANNING = "Replanning"
 	var EVPLANNING_EMPTY_LIST = "No Charging Stops"
 	var EVPLANNING_ACTIONS = "Actions"
 	var EVPLANNING_OPTIONS = "Options"
@@ -83,6 +84,14 @@ object L {
 	var EVPLANNING_WAYPOINT = "iDrive Waypoint"
 	var EVPLANNING_INVALID = "Outdated"
 	var EVPLANNING_OFFSET = "Offset"
+
+	var EVPLANNING_AUTO_REPLAN_ENABLE = "Automatic Replanning"
+	var EVPLANNING_MAX_SPEED_SPORT = "Sport"
+	var EVPLANNING_MAX_SPEED_COMFORT = "Comfort"
+	var EVPLANNING_MAX_SPEED_ECO_PRO = "Eco Pro"
+	var EVPLANNING_MAX_SPEED_ECO_PRO_PLUS = "Eco Pro Plus"
+	var EVPLANNING_MAX_SPEED = "Maximum speed"
+	var EVPLANNING_MAX_SPEED_DRIVEMODE_ENABLE = "Use Driving-mode for Maximum-speed"
 
 	fun loadResources(context: Context, locale: Locale? = null) {
 		val thisContext = if (locale == null) { context } else {

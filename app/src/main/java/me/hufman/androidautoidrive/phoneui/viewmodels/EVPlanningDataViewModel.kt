@@ -53,6 +53,10 @@ class EVPlanningDataViewModel(): ViewModel() {
 		fun setCardataDebug(debug: String) {
 			_carappDebug.postValue(debug)
 		}
+		private val _maxSpeed = MutableLiveData<Double?>()
+		fun setMaxSpeed(maxSpeed: Double?) {
+			_maxSpeed.postValue(maxSpeed)
+		}
 	}
 
 	val routingData: LiveData<RoutingData> = _routingData
@@ -60,4 +64,5 @@ class EVPlanningDataViewModel(): ViewModel() {
 	val cardataUpdates: LiveData<Int> = _cardataUpdates
 	val error: LiveData<String> = _error
 	val carappDebug: LiveData<String> = _carappDebug
+	val maxSpeed: LiveData<Double?> = _maxSpeed
 }

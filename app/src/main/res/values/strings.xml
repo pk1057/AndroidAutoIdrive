@@ -135,6 +135,13 @@
     <string name="lbl_evplanning_odometer">Odometer</string>
     <string name="lbl_evplanning_soc">State of charge</string>
     <string name="lbl_evplanning_torque">Torque</string>
+    <string name="lbl_evplanning_auto_replan">Enable Automatic Replanning</string>
+    <string name="lbl_evplanning_max_speed_title">Maximum speed for driving-modes</string>
+    <string name="lbl_evplanning_max_speed_comfort">Comfort</string>>
+    <string name="lbl_evplanning_max_speed_eco">Eco Pro</string>
+    <string name="lbl_evplanning_max_speed_eco_plus">Eco Pro Plus</string>
+    <string name="lbl_evplanning_max_speed">Maximum speed</string>
+    <string name="lbl_evplanning_max_speed_drivemode_enable">Use Drive-Mode for Maximum-speed</string>
 
     <string name="connectionStatusMissingConnectedApp">Can\'t find Connected or Connected Classic app</string>
     <string name="connectionStatusWaiting">Waiting for connection to car</string>
@@ -323,6 +330,7 @@
     <string name="EVPLANNING_TITLE_ROUTES">EVPlanning - Routes</string>
     <string name="EVPLANNING_TITLE_WAYPOINTS">EVPlanning - Waypoints</string>
     <string name="EVPLANNING_TITLE_ALTERNATIVES">EVPlanning - Alternatives</string>
+    <string name="EVPLANNING_REPLANNING">Replanning</string>
 
     <string name="EVPLANNING_EMPTY_LIST">No Charging Stops</string>
     <string name="EVPLANNING_ACTIONS">Actions</string>
@@ -331,4 +339,13 @@
     <string name="EVPLANNING_WAYPOINT">iDrive Waypoint</string>
     <string name="EVPLANNING_INVALID">Outdated</string>
     <string name="EVPLANNING_OFFSET">Offset</string>
+
+    <string name="EVPLANNING_AUTO_REPLAN_ENABLE">Automatic Replanning</string>
+    <string name="EVPLANNING_MAX_SPEED_SPORT">Sport</string>
+    <string name="EVPLANNING_MAX_SPEED_COMFORT">Comfort</string>
+    <string name="EVPLANNING_MAX_SPEED_ECO_PRO">Eco Pro</string>
+    <string name="EVPLANNING_MAX_SPEED_ECO_PRO_PLUS">Eco Pro Plus</string>
+    <string name="EVPLANNING_MAX_SPEED">Maximum Speed</string>
+    <string name="EVPLANNING_MAX_SPEED_DRIVEMODE_ENABLE">Use Driving-mode for Maximum-speed</string>
+
 </resources>

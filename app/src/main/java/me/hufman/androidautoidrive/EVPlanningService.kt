@@ -54,7 +54,7 @@ class EVPlanningService(val context: Context, val iDriveConnectionStatus: IDrive
 	val navigationModelUpdater = NavigationModelUpdater()
 
 	fun start(): Boolean {
-		if (AppSettings[AppSettings.KEYS.ENABLED_EVPLANNING].toBoolean()) {
+		if (AppSettings[AppSettings.KEYS.EVPLANNING_ENABLED].toBoolean()) {
 			try {
 				running = true
 				synchronized(this) {

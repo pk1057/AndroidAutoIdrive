@@ -235,6 +235,14 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 		if (!visible) {
 			return
 		}
+
+		state.getTextModel()?.asRaDataModel()?.value = listOfNotNull(
+			L.EVPLANNING_TITLE_WAYPOINTS,
+			if (navigationModel.isPlanning) {
+				"[${L.EVPLANNING_REPLANNING}...]"
+			} else null,
+		).joinToString(" ")
+
 		val waypoints = navigationModel.selectedRoute
 		if (waypoints.isNullOrEmpty()) {
 			waypointsList.getModel()?.value = emptyListData

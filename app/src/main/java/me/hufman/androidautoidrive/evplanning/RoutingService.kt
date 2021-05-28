@@ -19,6 +19,8 @@ package me.hufman.androidautoidrive.evplanning
 
 import android.content.Context
 import android.os.Handler
+import me.hufman.androidautoidrive.AppSettings
+import me.hufman.androidautoidrive.MutableAppSettingsReceiver
 import me.hufman.androidautoidrive.evplanning.iternio.Planning
 import me.hufman.androidautoidrive.evplanning.iternio.dto.Destination
 import me.hufman.androidautoidrive.evplanning.iternio.dto.PlanRequest
@@ -36,62 +38,18 @@ data class RoutingData(val carData: CarData, val routeDistances: List<RoutingSer
 interface RoutingDataListener {
 	fun onRoutingDataChanged(routingData: RoutingData)
 	fun onPlanChanged(plan: Plan?)
+	fun onPlanningTriggered()
 }
 
 class RoutingService(private val planning: Planning, private val routingDataListener: RoutingDataListener) {
 
 	var handler: Handler? = null
 
+	private var appSettings: MutableAppSettingsReceiver? = null
 	private var routingInProgress: Boolean = false
-
 	private var carData = CarData()
-		set(value) {
-			if (routingInProgress) return
-			val previous = field
-			field = value
-
-			val previousDestinations = setOf(
-					previous.nextDestination,
-					previous.finalDestination,
-			).filter { it.isValid() }
-			val newDestinations = setOf(
-					carData.nextDestination,
-					carData.finalDestination,
-			).filter { it.isValid() }
-
-			var existingWaypointIndices: List<List<Int>>? = null
-			val routes = planResult?.result?.routes
-
-			if (newDestinations.isEmpty()) {
-				if (previousDestinations.isNotEmpty()) {
-					resetPlanning()
-				} // else ignore if both are empty
-			} else { // new is not empty
-				if (routes == null) {
-					// no preexisting routing result:
-					planNew()
-					return
-				}
-				if (!newDestinations.last().equals(previousDestinations.lastOrNull())) {
-					// final destination has changed:
-					planNew()
-					return
-				} else {
-					// final destination is unchanged and next destination exists:
-					existingWaypointIndices = getExistingWaypointIndices(newDestinations, routes, MAX_WAYPOINT_DISTANCE)
-					if (existingWaypointIndices.isEmpty() ?: true) {
-						// next destination does not belong to an existing route
-						planNew()
-						return
-					}
-				}
-			}
-			routingDataListener.onRoutingDataChanged(RoutingData(
-					carData = carData, //TODO: carData will most likely be obsolete, currently used for debugging only
-					routeDistances = calcRouteDistances(carData.position, routes),
-					existingWaypointIndices,
-			))
-		}
+	private var maxSpeed: Double? = null
+	private var carModel = "bmw:i3:19:38:other"
 
 	private fun resetPlanning() {
 		planResult = null
@@ -111,18 +69,102 @@ class RoutingService(private val planning: Planning, private val routingDataList
 	}
 
 	fun onCarDataChanged(data: CarData) {
+		if (routingInProgress) return
+		val previous = carData
 		carData = data
+
+		if (carData.drivingMode != previous.drivingMode) {
+			if (planIfMaxSpeedChanged()) {
+				planNew()
+				return
+			}
+		}
+
+		val previousDestinations = setOf(
+				previous.nextDestination,
+				previous.finalDestination,
+		).filter { it.isValid() }
+		val newDestinations = setOf(
+				carData.nextDestination,
+				carData.finalDestination,
+		).filter { it.isValid() }
+
+		var existingWaypointIndices: List<List<Int>>? = null
+		val routes = planResult?.result?.routes
+
+		if (newDestinations.isEmpty()) {
+			if (previousDestinations.isNotEmpty()) {
+				resetPlanning()
+			} // else ignore if both are empty
+		} else { // new is not empty
+			if (routes == null) {
+				// no preexisting routing result:
+				planNew()
+				return
+			}
+			if (newDestinations.last() != previousDestinations.lastOrNull()) {
+				// final destination has changed:
+				planNew()
+				return
+			} else {
+				// final destination is unchanged and next destination exists:
+				existingWaypointIndices = getExistingWaypointIndices(newDestinations, routes, MAX_WAYPOINT_DISTANCE)
+				if (existingWaypointIndices.isEmpty()) {
+					// next destination does not belong to an existing route
+					planNew()
+					return
+				}
+			}
+		}
+		routingDataListener.onRoutingDataChanged(RoutingData(
+				carData = carData, //TODO: carData will most likely be obsolete, currently used for debugging only
+				routeDistances = calcRouteDistances(carData.position, routes),
+				existingWaypointIndices,
+		))
+	}
+
+	fun planIfMaxSpeedChanged(): Boolean {
+		val speed = try {
+			if (appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE)?.toBoolean() == true) {
+				when (carData.drivingMode) {
+					DRIVING_MODE_COMFORT -> appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT)?.toDouble()
+					DRIVING_MODE_ECO_PRO -> appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO)?.toDouble()
+					DRIVING_MODE_ECO_PRO_PLUS -> appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS)?.toDouble()
+					DRIVING_MODE_SPORT -> appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED_SPORT)?.toDouble()
+					else -> null
+				}
+			} else {
+				appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED)?.toDouble()
+			}
+		} catch (e: NumberFormatException) {
+			null
+		}
+		if (maxSpeed?.equals(speed) ?: speed == null) {
+			return false
+		}
+		maxSpeed = speed
+		if (appSettings?.get(AppSettings.KEYS.EVPLANNING_AUTO_REPLAN)?.toBoolean() != true) {
+			return false
+		}
+		return true
 	}
 
 	fun onCreate(context: Context, handler: Handler) {
 		this.handler = handler
+		appSettings = MutableAppSettingsReceiver(context, handler)
+		appSettings?.callback = this::onAppSettingsChanged
 	}
 
 	fun onDestroy(context: Context) {
+		appSettings?.callback = null
 		handler = null
 	}
 
-	var carModel = "bmw:i3:19:38:other"
+	fun onAppSettingsChanged() {
+		if (planIfMaxSpeedChanged()) {
+			planNew()
+		}
+	}
 
 	private var error: String? = null
 		set(value) {
@@ -137,7 +179,8 @@ class RoutingService(private val planning: Planning, private val routingDataList
 		}
 
 	private fun triggerPlanning(find_alts: Boolean? = null, find_next_charger_alts: Boolean? = null, plan_uuid: String? = null) {
-
+		//TODO remove, only for debugging:
+		EVPlanningDataViewModel.setMaxSpeed(maxSpeed)
 		setOf(
 				carData.position,
 				carData.nextDestination,
@@ -153,11 +196,13 @@ class RoutingService(private val planning: Planning, private val routingDataList
 				}
 				?.let { destinations ->
 					routingInProgress = true
+					routingDataListener.onPlanningTriggered()
 					planning.plan(
 							PlanRequest(
 									car_model = carModel,
 									destinations = destinations,
 									initial_soc_perc = carData.soc,
+									max_speed = maxSpeed,
 									outside_temp = carData.externalTemperature.toDouble(),
 									find_alts = find_alts,
 									find_next_charger_alts = find_next_charger_alts,
@@ -231,7 +276,12 @@ class RoutingService(private val planning: Planning, private val routingDataList
 
 	companion object {
 
-		val MAX_WAYPOINT_DISTANCE = 50.0
+		const val DRIVING_MODE_ECO_PRO = 7
+		const val DRIVING_MODE_ECO_PRO_PLUS = 8
+		const val DRIVING_MODE_COMFORT = 3
+		const val DRIVING_MODE_SPORT = -1 //TODO value of sport-mode unknown
+
+		const val MAX_WAYPOINT_DISTANCE = 50.0
 
 		fun calcRouteDistances(position: Position, routes: List<Route>?): List<RouteDistance>? {
 			return PositionRuler.of(position)?.let { ruler ->
@@ -294,9 +344,9 @@ class RoutingService(private val planning: Planning, private val routingDataList
 					}
 				}
 			}.let { result ->
-				routes.mapIndexed { routeIndex, route ->
-					positions.mapIndexed { positionIndex, position ->
-						result.get(positionIndex)?.get(routeIndex)
+				routes.mapIndexed { routeIndex, _ ->
+					positions.mapIndexed { positionIndex, _ ->
+						result[positionIndex]?.get(routeIndex)
 					}.filterNotNull()
 				}
 			}

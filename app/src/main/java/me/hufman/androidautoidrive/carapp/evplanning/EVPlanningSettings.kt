@@ -24,13 +24,35 @@ import me.hufman.androidautoidrive.connections.BtStatus
 class EVPlanningSettings(val capabilities: Map<String, String?>, val btStatus: BtStatus, val appSettings: MutableAppSettingsObserver) {
 	var callback
 		get() = appSettings.callback
-		set(value) { appSettings.callback = value }
+		set(value) {
+			appSettings.callback = value
+		}
 
 	// car's supported features
 	val tts = capabilities["tts"]?.toLowerCase() == "true"
 
+	val booleanSettings = listOf(
+			AppSettings.KEYS.EVPLANNING_AUTO_REPLAN,
+			AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE,
+	)
+
+	val stringSettings = listOf(
+			AppSettings.KEYS.EVPLANNING_MAXSPEED,
+			AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT,
+			AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO,
+			AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS,
+	)
+
 	fun getSettings(): List<AppSettings.KEYS> {
-		return listOf()
+		return booleanSettings + stringSettings
+	}
+
+	fun isBooleanSetting(setting: AppSettings.KEYS): Boolean {
+		return booleanSettings.contains(setting)
+	}
+
+	fun isStringSetting(setting: AppSettings.KEYS): Boolean {
+		return stringSettings.contains(setting)
 	}
 
 	fun toggleSetting(setting: AppSettings.KEYS) {
@@ -39,5 +61,13 @@ class EVPlanningSettings(val capabilities: Map<String, String?>, val btStatus: B
 
 	fun isChecked(setting: AppSettings.KEYS): Boolean {
 		return appSettings[setting].toBoolean()
+	}
+
+	fun getStringSetting(setting: AppSettings.KEYS): String {
+		return appSettings[setting]
+	}
+
+	fun setStringSetting(setting: AppSettings.KEYS, value: String) {
+		appSettings[setting] = value
 	}
 }

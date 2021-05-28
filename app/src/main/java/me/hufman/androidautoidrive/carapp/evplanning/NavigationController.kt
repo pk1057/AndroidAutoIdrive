@@ -81,11 +81,21 @@ class NavigationController(val context: Context, val navigationModel: Navigation
 
 	fun invalidateAll() {
 		navigationModel.apply {
+			isPlanning = false
 			displayRoutesValid = false
 			selectedRouteValid = false
 			selectedWaypointValid = false
 			selectedRouteIndex = null // delete the indices only so anything that is on screen will stay for now
 			selectedWaypointIndex = null
+			displayRoutesObserver?.invoke()
+			selectedRouteObserver?.invoke()
+			selectedWaypointObserver?.invoke()
+		}
+	}
+
+	fun planningTriggered() {
+		navigationModel.apply {
+			isPlanning = true
 			displayRoutesObserver?.invoke()
 			selectedRouteObserver?.invoke()
 			selectedWaypointObserver?.invoke()

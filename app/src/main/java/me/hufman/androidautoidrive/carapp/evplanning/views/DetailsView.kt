@@ -161,6 +161,9 @@ class DetailsView(
 		val icon = display.icon?.let {graphicsHelpers.compress(it, 48, 48)} ?: ""
 		val title = listOfNotNull(
 				display.title ?: L.EVPLANNING_UNKNOWN_LOC,
+				if (navigationModel.isPlanning) {
+					"[${L.EVPLANNING_REPLANNING}...]"
+				} else null,
 				if (!navigationModel.selectedWaypointValid) {
 					"[${L.EVPLANNING_INVALID}]"
 				} else null,

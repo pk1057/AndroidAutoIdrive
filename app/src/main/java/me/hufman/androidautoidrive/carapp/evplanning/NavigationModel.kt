@@ -22,6 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class NavigationModel {
 
+	var isPlanning: Boolean = false
+
 	var displayRoutesValid: Boolean = false
 	var selectedRouteValid: Boolean = false
 	var selectedWaypointValid: Boolean = false

@@ -35,7 +35,7 @@ class EVPlanningPageFragment: Fragment() {
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		super.onViewCreated(view, savedInstanceState)
 
-		val evPlanningEnabledSetting = BooleanLiveSetting(requireContext().applicationContext, AppSettings.KEYS.ENABLED_EVPLANNING)
+		val evPlanningEnabledSetting = BooleanLiveSetting(requireContext().applicationContext, AppSettings.KEYS.EVPLANNING_ENABLED)
 		evPlanningEnabledSetting.observe(viewLifecycleOwner) {
 			swEVPlanningEnabled.isChecked = it
 			paneEVPlanningSettings.visible = it

@@ -47,7 +47,14 @@ interface AppSettings {
 		CACHED_CAR_DATA("Cached_Car_Data", "{}", "JSON Object of any previously-cached cds properties"),
 		PREFER_CAR_LANGUAGE("Prefer_Car_Language", "true", "Prefer the car's language instead of the phone's language"),
 		FORCE_CAR_LANGUAGE("Force_Car_Language", "", "Force a specific language for the car apps"),
-		ENABLED_EVPLANNING("Enabled_EVPlanning", "false", "use EVPlanning to plan charging-stops for electric vehicles"),
+		EVPLANNING_ENABLED("Enabled_EVPlanning", "false", "use EVPlanning to plan charging-stops for electric vehicles"),
+		EVPLANNING_AUTO_REPLAN( "Enabled_EVPlanning_AutoReplan", "false", "allow automatic replanning"),
+		EVPLANNING_MAXSPEED_SPORT("EVPlanning_Maxspeed_Sport", "150", "Maximum speed in drivingmode Sport"),
+		EVPLANNING_MAXSPEED_COMFORT("EVPlanning_Maxspeed_Comfort", "130", "Maximum speed in drivingmode Comfort"),
+		EVPLANNING_MAXSPEED_ECO_PRO("EVPlanning_Maxspeed_Eco", "110", "Maximum speed in drivingmode EcoPro"),
+		EVPLANNING_MAXSPEED_ECO_PRO_PLUS("EVPlanning_Maxspeed_EcoPlus", "90", "Maximum speed in drivingmode EcoProPlus"),
+		EVPLANNING_MAXSPEED("EVPlanning_Maxspeed", "110", "Maximum speed"),
+		EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE("EVPLanning_Maxspeed_Override_enable", "false", "Use Drive-mode for Maximum Speed"),
 	}
 
 	/** Store the active preferences in a singleton */

@@ -22,6 +22,7 @@ import android.util.Log
 import de.bmw.idrive.BMWRemoting
 import me.hufman.androidautoidrive.*
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
+import me.hufman.androidautoidrive.carapp.RHMIActionAbort
 import me.hufman.androidautoidrive.carapp.RHMIListAdapter
 import me.hufman.androidautoidrive.carapp.evplanning.*
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistance
@@ -87,20 +88,25 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 
 	val iconFlag: ByteArray?
 
-	val menuSettingsListData = object : RHMIListAdapter<AppSettings.KEYS>(3, settings.getSettings()) {
+	val menuSettingsListData = object : RHMIListAdapter<AppSettings.KEYS>(5, settings.getSettings()) {
 		override fun convertRow(index: Int, item: AppSettings.KEYS): Array<Any> {
-			val checked = settings.isChecked(item)
-			val checkmark = if (checked) BMWRemoting.RHMIResourceIdentifier(BMWRemoting.RHMIResourceType.IMAGEID, IMAGEID_CHECKMARK) else ""
+			val isString = settings.isStringSetting(item)
+			val value = if (isString) { settings.getStringSetting(item) } else ""
+			val checkmark = if (!isString && settings.isChecked(item)) {
+				BMWRemoting.RHMIResourceIdentifier(BMWRemoting.RHMIResourceType.IMAGEID, IMAGEID_CHECKMARK)
+			} else ""
 			val name = when (item) {
-				AppSettings.KEYS.ENABLED_NOTIFICATIONS_POPUP -> L.NOTIFICATION_POPUPS
-				AppSettings.KEYS.ENABLED_NOTIFICATIONS_POPUP_PASSENGER -> L.NOTIFICATION_POPUPS_PASSENGER
-				AppSettings.KEYS.NOTIFICATIONS_SOUND -> L.NOTIFICATION_SOUND
-				AppSettings.KEYS.NOTIFICATIONS_READOUT -> L.NOTIFICATION_READOUT
-				AppSettings.KEYS.NOTIFICATIONS_READOUT_POPUP -> L.NOTIFICATION_READOUT_POPUP
-				AppSettings.KEYS.NOTIFICATIONS_READOUT_POPUP_PASSENGER -> L.NOTIFICATION_READOUT_POPUP_PASSENGER
+				AppSettings.KEYS.EVPLANNING_AUTO_REPLAN -> L.EVPLANNING_AUTO_REPLAN_ENABLE
+				AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE -> L.EVPLANNING_MAX_SPEED_DRIVEMODE_ENABLE
+				AppSettings.KEYS.EVPLANNING_MAXSPEED -> L.EVPLANNING_MAX_SPEED
+				AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT -> L.EVPLANNING_MAX_SPEED_COMFORT
+				AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO -> L.EVPLANNING_MAX_SPEED_ECO_PRO
+				AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS -> L.EVPLANNING_MAX_SPEED_ECO_PRO_PLUS
+				//TODO need cardata value of drive-mode sport
+				// AppSettings.KEYS.EVPLANNING_MAXSPEED_SPORT -> L.EVPLANNING_MAX_SPEED_SPORT
 				else -> ""
 			}
-			return arrayOf(checkmark, "", name)
+			return arrayOf(checkmark, "", name, "", value)
 		}
 	}
 
@@ -142,10 +148,10 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 					focusTriggerController.focusComponent(routesList, index)
 				}
 
-//				redrawSettingsList()
-//				settings.callback = {
-//					redrawSettingsList()
-//				}
+				redrawSettingsList()
+				settings.callback = {
+					redrawSettingsList()
+				}
 			} else {
 				settings.callback = null
 			}
@@ -178,29 +184,29 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 		actionsLabel.setEnabled(false)
 		actionsLabel.setSelectable(false)
 
-		settingsLabel.getModel()?.asRaDataModel()?.value = L.EVPLANNING_OPTIONS
-		settingsLabel.setVisible(true)
-		settingsLabel.setEnabled(false)
-		settingsLabel.setSelectable(false)
-
-//		if (settings.getSettings().isNotEmpty()) {
-//			state.componentsList.filterIsInstance<RHMIComponent.Label>().lastOrNull()?.let {
-//				it.getModel()?.asRaDataModel()?.value = L.EVPLANNING_OPTIONS
-//				it.setVisible(true)
-//				it.setEnabled(false)
-//				it.setSelectable(false)
-//			}
-//
-//			settingsListView.setVisible(true)
-//			settingsListView.setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*")
-//			settingsListView.getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionListCallback { index ->
-//				val setting = menuSettingsListData.realData.getOrNull(index)
-//				if (setting != null) {
-//					settings.toggleSetting(setting)
-//				}
-//				throw RHMIActionAbort()
-//			}
-//		}
+		if (settings.getSettings().isNotEmpty()) {
+			settingsLabel?.apply {
+				getModel()?.asRaDataModel()?.value = L.EVPLANNING_OPTIONS
+				setVisible(true)
+				setEnabled(false)
+				setSelectable(false)
+			}
+			settingsList?.apply {
+				setVisible(true)
+				setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*,0,100")
+				getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionListCallback { index ->
+					val setting = menuSettingsListData.realData.getOrNull(index)
+					setting?.let {
+						if (settings.isBooleanSetting(it)) {
+							settings.toggleSetting(it)
+						} else if (settings.isStringSetting(it)) {
+							// TODO trigger input view
+						}
+					}
+					throw RHMIActionAbort()
+				}
+			}
+		}
 	}
 
 	fun onCreate(handler: Handler) {
@@ -237,6 +243,13 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 		if (!visible) {
 			return
 		}
+		state.getTextModel()?.asRaDataModel()?.value = listOfNotNull(
+			L.EVPLANNING_TITLE_ROUTES,
+			if (navigationModel.isPlanning) {
+				"[${L.EVPLANNING_REPLANNING}...]"
+			} else null,
+		).joinToString(" ")
+
 		val routes = navigationModel.displayRoutes
 		if (routes.isNullOrEmpty()) {
 			routesList.getModel()?.value = emptyListData
@@ -265,7 +278,7 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 		}
 	}
 
-//	fun redrawSettingsList() {
-//		settingsListView.getModel()?.value = menuSettingsListData
-//	}
+	fun redrawSettingsList() {
+		settingsList?.getModel()?.value = menuSettingsListData
+	}
 }
