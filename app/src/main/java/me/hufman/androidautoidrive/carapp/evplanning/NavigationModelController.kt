@@ -22,9 +22,32 @@ import android.location.Address
 import me.hufman.androidautoidrive.carapp.navigation.NavigationParser
 import me.hufman.androidautoidrive.carapp.navigation.NavigationTriggerSender
 import me.hufman.androidautoidrive.evplanning.DisplayRoute
+import me.hufman.androidautoidrive.evplanning.DisplayWaypoint
 import java.util.*
 
-class NavigationController(val context: Context, val navigationModel: NavigationModel) {
+class NavigationModel {
+
+	var isPlanning: Boolean = false
+
+	var displayRoutesValid: Boolean = false
+	var selectedRouteValid: Boolean = false
+	var selectedWaypointValid: Boolean = false
+
+	var displayRoutes: List<DisplayRoute>? = null
+	var selectedRoute: List<DisplayWaypoint>? = null
+	var selectedWaypoint: DisplayWaypoint? = null
+
+	var selectedRouteIndex: Int? = null
+	var selectedWaypointIndex: Int? = null
+
+	var displayRoutesObserver: (() -> Unit)? = null
+	var selectedRouteObserver: (() -> Unit)? = null
+	var selectedWaypointObserver: (() -> Unit)? = null
+}
+
+class NavigationModelController(val context: Context) {
+
+	val navigationModel = NavigationModel()
 
 	fun selectRoute(index: Int): Boolean {
 		with(navigationModel) {

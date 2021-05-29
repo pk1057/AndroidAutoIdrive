@@ -51,7 +51,7 @@ data class Position(val latitude: Double = Double.NaN, val longitude: Double = D
 	}
 }
 
-interface CarDataListenerRaw {
+interface CarApplicationListener {
 
 	fun onPositionChanged(position: Position)
 	fun onNextDestinationChanged(position: Position)
@@ -64,9 +64,11 @@ interface CarDataListenerRaw {
 	fun onBatteryTemperatureChanged(batteryTemperature: Int)
 	fun onInternalTemperatureChanged(internalTemperature: Int)
 	fun onExternalTemperatureChanged(externalTemperature: Int)
+
+	fun onActionPlan()
 }
 
-class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, val securityAccess: SecurityAccess, val carAppAssets: CarAppResources, val carAppAssetsIcons: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers, private val cardataListenerRaw: CarDataListenerRaw, val settings: EVPlanningSettings, val navigationController: NavigationController) {
+class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, val securityAccess: SecurityAccess, val carAppAssets: CarAppResources, val carAppAssetsIcons: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers, private val carApplicationListener: CarApplicationListener, val settings: EVPlanningSettings, val navigationModelController: NavigationModelController) {
 	var handler: Handler? = null
 	val carappListener: CarAppListener
 	var rhmiHandle: Int = -1
@@ -132,9 +134,9 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 			carAppImages = Utils.loadZipfile(carAppAssetsIcons.getImagesDB(iDriveConnectionStatus.brand ?: "common"))
 
 			// figure out which views to use
-			viewRoutesList = RoutesListView(unclaimedStates.removeFirst { RoutesListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel, carAppImages)
-			viewWaypointList = WaypointsListView(unclaimedStates.removeFirst { WaypointsListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel, carAppImages)
-			viewDetails = DetailsView(unclaimedStates.removeFirst { DetailsView.fits(it) }, phoneAppResources, graphicsHelpers, settings, focusTriggerController, navigationController.navigationModel, carAppImages)
+			viewRoutesList = RoutesListView(unclaimedStates.removeFirst { RoutesListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationModelController.navigationModel, carAppImages)
+			viewWaypointList = WaypointsListView(unclaimedStates.removeFirst { WaypointsListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationModelController.navigationModel, carAppImages)
+			viewDetails = DetailsView(unclaimedStates.removeFirst { DetailsView.fits(it) }, phoneAppResources, graphicsHelpers, settings, focusTriggerController, navigationModelController.navigationModel, carAppImages)
 
 //			stateInput = carApp.states.values.filterIsInstance<RHMIState.PlainState>().first {
 //				it.componentsList.filterIsInstance<RHMIComponent.Input>().isNotEmpty()
@@ -167,7 +169,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				it["mode"]?.asInt?.let { drivingMode ->
 					if (drivingMode != this.drivingMode) {
 						this.drivingMode = drivingMode
-						cardataListenerRaw.onDrivingModeChanged(drivingMode)
+						carApplicationListener.onDrivingModeChanged(drivingMode)
 					}
 				}
 			}
@@ -175,7 +177,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				it["odometer"]?.asInt?.let { odometer ->
 					if (odometer != this.odometer) {
 						this.odometer = odometer
-						cardataListenerRaw.onOdometerChanged(odometer)
+						carApplicationListener.onOdometerChanged(odometer)
 					}
 				}
 			}
@@ -183,7 +185,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				it["speedActual"]?.asInt?.let { speed ->
 					if (speed != this.speed) {
 						this.speed = speed
-						cardataListenerRaw.onSpeedChanged(speed)
+						carApplicationListener.onSpeedChanged(speed)
 					}
 				}
 			}
@@ -191,7 +193,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				it["torque"]?.asInt?.let { torque ->
 					if (torque != this.torque) {
 						this.torque = torque
-						cardataListenerRaw.onTorqueChanged(torque)
+						carApplicationListener.onTorqueChanged(torque)
 					}
 				}
 			}
@@ -204,7 +206,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				}?.let { position ->
 					if (position != this.position) {
 						this.position = position
-						cardataListenerRaw.onPositionChanged(position)
+						carApplicationListener.onPositionChanged(position)
 					}
 				}
 			}
@@ -214,7 +216,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				}?.let { destination ->
 					if (destination != nextDestination) {
 						nextDestination = destination
-						cardataListenerRaw.onNextDestinationChanged(destination)
+						carApplicationListener.onNextDestinationChanged(destination)
 					}
 				}
 			}
@@ -224,7 +226,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				}?.let { destination ->
 					if (destination != finalDestination) {
 						finalDestination = destination
-						cardataListenerRaw.onFinalDestinationChanged(destination)
+						carApplicationListener.onFinalDestinationChanged(destination)
 					}
 				}
 			}
@@ -232,7 +234,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				it["batteryTemp"]?.asInt?.let { temperature ->
 					if (temperature != batteryTemperature) {
 						batteryTemperature = temperature
-						cardataListenerRaw.onBatteryTemperatureChanged(temperature)
+						carApplicationListener.onBatteryTemperatureChanged(temperature)
 					}
 				}
 			}
@@ -240,7 +242,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				it["SOCBatteryHybrid"]?.asDouble?.let { soc ->
 					if (soc != socBattery) {
 						socBattery = soc
-						cardataListenerRaw.onSOCChanged(soc)
+						carApplicationListener.onSOCChanged(soc)
 					}
 				}
 			}
@@ -248,7 +250,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				it["temperatureExterior"]?.asInt?.let { temperature ->
 					if (temperature != externalTemperature) {
 						externalTemperature = temperature
-						cardataListenerRaw.onExternalTemperatureChanged(temperature)
+						carApplicationListener.onExternalTemperatureChanged(temperature)
 					}
 				}
 			}
@@ -256,7 +258,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				it["temperatureInterior"]?.asInt?.let { temperature ->
 					if (temperature != internalTemperature) {
 						internalTemperature = temperature
-						cardataListenerRaw.onInternalTemperatureChanged(temperature)
+						carApplicationListener.onInternalTemperatureChanged(temperature)
 					}
 				}
 			}
@@ -275,39 +277,48 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 			}
 		}
 
-		with(navigationController) {
+		with(navigationModelController.navigationModel) {
 
-			navigationModel.displayRoutesObserver = {
+			displayRoutesObserver = {
 				viewRoutesList.redrawRoutes()
 			}
 
-			navigationModel.selectedRouteObserver = {
+			selectedRouteObserver = {
 				viewWaypointList.redrawWaypoints()
 			}
 
-			navigationModel.selectedWaypointObserver = {
+			selectedWaypointObserver = {
 				viewDetails.redraw()
 			}
 		}
 
-		viewRoutesList.onRoutesListClicked = {
-			if (navigationController.selectRoute(it)) {
-				showWaypointsViewFromListAction()
-			} else {
-				hideWaypointsViewFromListAction()
+		with(viewRoutesList) {
+			onRoutesListClicked = {
+				if (navigationModelController.selectRoute(it)) {
+					showWaypointsViewFromListAction()
+				} else {
+					hideWaypointsViewFromListAction()
+				}
+			}
+			onActionPlanClicked = {
+				carApplicationListener.onActionPlan()
 			}
 		}
 
-		viewWaypointList.onWaypointListClicked = {
-			if (navigationController.selectWaypoint(it)) {
-				showDetailsViewFromListAction()
-			} else {
-				hideDetailsViewFromListAction()
+		with(viewWaypointList) {
+			onWaypointListClicked = {
+				if (navigationModelController.selectWaypoint(it)) {
+					showDetailsViewFromListAction()
+				} else {
+					hideDetailsViewFromListAction()
+				}
 			}
 		}
 
-		viewDetails.onAddressClicked = {
-			navigationController.navigateToWaypoint()
+		with(viewDetails) {
+			onAddressClicked = {
+				navigationModelController.navigateToWaypoint()
+			}
 		}
 	}
 

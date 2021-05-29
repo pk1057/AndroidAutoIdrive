@@ -33,7 +33,11 @@ import me.hufman.androidautoidrive.evplanning.RoutingService.RouteDistance.Compa
 import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningDataViewModel
 import kotlin.math.sqrt
 
-data class RoutingData(val carData: CarData, val routeDistances: List<RoutingService.RouteDistance>?, val existingWaypointIndices: List<List<Int>?>?)
+data class RoutingData(
+	val carData: CarData,
+	val routeDistances: List<RoutingService.RouteDistance>?,
+	val existingWaypointIndices: List<List<Int>?>?
+)
 
 interface RoutingDataListener {
 	fun onRoutingDataChanged(routingData: RoutingData)
@@ -41,14 +45,33 @@ interface RoutingDataListener {
 	fun onPlanningTriggered()
 }
 
-class RoutingService(private val planning: Planning, private val routingDataListener: RoutingDataListener) {
+class RoutingService(
+	private val planning: Planning,
+	private val routingDataListener: RoutingDataListener
+) {
 
 	var handler: Handler? = null
 
 	private var appSettings: MutableAppSettingsReceiver? = null
-	private var routingInProgress: Boolean = false
+	private var routingInProgress = false
 	private var carData = CarData()
+
 	private var maxSpeed: Double? = null
+		set(value) {
+			if (isChangedForReplan(field, value)) {
+				field = value
+			}
+		}
+
+	private var referenceConsumption: Int? = null
+		set(value) {
+			if (isChangedForReplan(field, value)) {
+				field = value
+			}
+		}
+
+	private var shouldReplan = false
+
 	private var carModel = "bmw:i3:19:38:other"
 
 	private fun resetPlanning() {
@@ -73,20 +96,23 @@ class RoutingService(private val planning: Planning, private val routingDataList
 		val previous = carData
 		carData = data
 
-		if (carData.drivingMode != previous.drivingMode) {
-			if (planIfMaxSpeedChanged()) {
-				planNew()
-				return
+		if (isDriveModeEnabled()) {
+			maxSpeed = when (carData.drivingMode) {
+				DRIVING_MODE_COMFORT -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT)
+				DRIVING_MODE_ECO_PRO -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO)
+				DRIVING_MODE_ECO_PRO_PLUS -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS)
+				DRIVING_MODE_SPORT -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_SPORT)
+				else -> null
 			}
 		}
 
 		val previousDestinations = setOf(
-				previous.nextDestination,
-				previous.finalDestination,
+			previous.nextDestination,
+			previous.finalDestination,
 		).filter { it.isValid() }
 		val newDestinations = setOf(
-				carData.nextDestination,
-				carData.finalDestination,
+			carData.nextDestination,
+			carData.finalDestination,
 		).filter { it.isValid() }
 
 		var existingWaypointIndices: List<List<Int>>? = null
@@ -108,7 +134,8 @@ class RoutingService(private val planning: Planning, private val routingDataList
 				return
 			} else {
 				// final destination is unchanged and next destination exists:
-				existingWaypointIndices = getExistingWaypointIndices(newDestinations, routes, MAX_WAYPOINT_DISTANCE)
+				existingWaypointIndices =
+					getExistingWaypointIndices(newDestinations, routes, MAX_WAYPOINT_DISTANCE)
 				if (existingWaypointIndices.isEmpty()) {
 					// next destination does not belong to an existing route
 					planNew()
@@ -116,36 +143,23 @@ class RoutingService(private val planning: Planning, private val routingDataList
 				}
 			}
 		}
-		routingDataListener.onRoutingDataChanged(RoutingData(
+		routingDataListener.onRoutingDataChanged(
+			RoutingData(
 				carData = carData, //TODO: carData will most likely be obsolete, currently used for debugging only
 				routeDistances = calcRouteDistances(carData.position, routes),
 				existingWaypointIndices,
-		))
+			)
+		)
+		if (shouldReplan && isReplanEnabled()) {
+			planNew()
+		}
 	}
 
-	fun planIfMaxSpeedChanged(): Boolean {
-		val speed = try {
-			if (appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE)?.toBoolean() == true) {
-				when (carData.drivingMode) {
-					DRIVING_MODE_COMFORT -> appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT)?.toDouble()
-					DRIVING_MODE_ECO_PRO -> appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO)?.toDouble()
-					DRIVING_MODE_ECO_PRO_PLUS -> appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS)?.toDouble()
-					DRIVING_MODE_SPORT -> appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED_SPORT)?.toDouble()
-					else -> null
-				}
-			} else {
-				appSettings?.get(AppSettings.KEYS.EVPLANNING_MAXSPEED)?.toDouble()
-			}
-		} catch (e: NumberFormatException) {
-			null
-		}
-		if (maxSpeed?.equals(speed) ?: speed == null) {
+	fun isChangedForReplan(old: Any?, new: Any?): Boolean {
+		if (old?.equals(new) ?: (new == null)) {
 			return false
 		}
-		maxSpeed = speed
-		if (appSettings?.get(AppSettings.KEYS.EVPLANNING_AUTO_REPLAN)?.toBoolean() != true) {
-			return false
-		}
+		shouldReplan = true
 		return true
 	}
 
@@ -160,8 +174,37 @@ class RoutingService(private val planning: Planning, private val routingDataList
 		handler = null
 	}
 
+	fun isReplanEnabled() = getAppSettingBoolean(AppSettings.KEYS.EVPLANNING_AUTO_REPLAN)
+
+	fun isDriveModeEnabled() = getAppSettingBoolean(AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE)
+
+	private fun getAppSettingBoolean(setting: AppSettings.KEYS): Boolean {
+		return appSettings?.get(setting)?.toBoolean() == true
+	}
+
+	private fun getAppSettingDouble(setting: AppSettings.KEYS): Double? {
+		return try {
+			appSettings?.get(setting)?.toDouble()
+		} catch (e: NumberFormatException) {
+			null
+		}
+	}
+
+	private fun getAppSettingInt(setting: AppSettings.KEYS): Int? {
+		return try {
+			appSettings?.get(setting)?.toInt()
+		} catch (e: NumberFormatException) {
+			null
+		}
+	}
+
 	fun onAppSettingsChanged() {
-		if (planIfMaxSpeedChanged()) {
+		if (!isDriveModeEnabled()) {
+			maxSpeed = getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED)
+		}
+		referenceConsumption = getAppSettingInt(AppSettings.KEYS.EVPLANNING_REFERENCE_CONSUMPTION)
+
+		if (shouldReplan && isReplanEnabled()) {
 			planNew()
 		}
 	}
@@ -178,68 +221,77 @@ class RoutingService(private val planning: Planning, private val routingDataList
 			routingDataListener.onPlanChanged(value?.result)
 		}
 
-	private fun triggerPlanning(find_alts: Boolean? = null, find_next_charger_alts: Boolean? = null, plan_uuid: String? = null) {
+	private fun triggerPlanning(
+		find_alts: Boolean? = null,
+		find_next_charger_alts: Boolean? = null,
+		plan_uuid: String? = null
+	) {
 		//TODO remove, only for debugging:
 		EVPlanningDataViewModel.setMaxSpeed(maxSpeed)
 		setOf(
-				carData.position,
-				carData.nextDestination,
-				carData.finalDestination
+			carData.position,
+			carData.nextDestination,
+			carData.finalDestination
 		).filter { it.isValid() }
-				.takeIf { it.size > 1 }
-				?.mapIndexed { index, it ->
-					Destination(
-							it.latitude,
-							it.longitude,
-							is_my_pos = if (index == 0) true else null
-					)
-				}
-				?.let { destinations ->
-					routingInProgress = true
-					routingDataListener.onPlanningTriggered()
-					planning.plan(
-							PlanRequest(
-									car_model = carModel,
-									destinations = destinations,
-									initial_soc_perc = carData.soc,
-									max_speed = maxSpeed,
-									outside_temp = carData.externalTemperature.toDouble(),
-									find_alts = find_alts,
-									find_next_charger_alts = find_next_charger_alts,
-									plan_uuid = plan_uuid
-							),
-							{
-								if (find_next_charger_alts == true) {
-									handler?.post {
-										planResult = it
-										error = null
-										routingInProgress = false
-									}
-								} else {
-									handler?.post {
-										planResult = it
-										error = null
-										routingInProgress = false
-									}
-								}
-							},
-							{
-								handler?.post {
-									error = it
-									routingInProgress = false
-								}
-							})
-				}
+			.takeIf { it.size > 1 }
+			?.mapIndexed { index, it ->
+				Destination(
+					it.latitude,
+					it.longitude,
+					is_my_pos = if (index == 0) true else null
+				)
+			}
+			?.let { destinations ->
+				routingInProgress = true
+				routingDataListener.onPlanningTriggered()
+				shouldReplan = false
+				planning.plan(
+					PlanRequest(
+						car_model = carModel,
+						destinations = destinations,
+						initial_soc_perc = carData.soc,
+						max_speed = maxSpeed,
+						ref_consumption = referenceConsumption,
+						outside_temp = carData.externalTemperature.toDouble(),
+						find_alts = find_alts,
+						find_next_charger_alts = find_next_charger_alts,
+						plan_uuid = plan_uuid
+					),
+					{
+						if (find_next_charger_alts == true) {
+							handler?.post {
+								planResult = it
+								error = null
+								routingInProgress = false
+							}
+						} else {
+							handler?.post {
+								planResult = it
+								error = null
+								routingInProgress = false
+							}
+						}
+					},
+					{
+						handler?.post {
+							error = it
+							routingInProgress = false
+						}
+					})
+			}
 	}
 
-	class PositionRuler private constructor(private val point: Point, private val ruler: CheapRuler) {
+	class PositionRuler private constructor(
+		private val point: Point,
+		private val ruler: CheapRuler
+	) {
 
 		companion object {
 			fun of(position: Position): PositionRuler? {
 				return if (position.isValid()) {
 					PositionRuler(
-							Point(position.latitude, position.longitude),
-							CheapRuler.fromLatitude(position.latitude, Units.METRES)
+						Point(position.latitude, position.longitude),
+						CheapRuler.fromLatitude(position.latitude, Units.METRES)
 					)
 				} else null
 			}
@@ -262,14 +314,32 @@ class RoutingService(private val planning: Planning, private val routingDataList
 	class StepSegmentDistance(val stepIndex: Int, val distance: Double)
 	class StepDistance(val stepIndex: Int, val distance: Double)
 
-	class RouteDistance private constructor(val routeIndex: Int, val stepIndex: Int, val pathStepIndex: Int?, val distance: Double) {
+	class RouteDistance private constructor(
+		val routeIndex: Int,
+		val stepIndex: Int,
+		val pathStepIndex: Int?,
+		val distance: Double
+	) {
 		companion object {
 			fun fromPathStep(routeIndex: Int, pathStepDistance: PathStepDistance): RouteDistance {
-				return RouteDistance(routeIndex, pathStepDistance.stepIndex, pathStepDistance.pathStepIndex, pathStepDistance.distance)
+				return RouteDistance(
+					routeIndex,
+					pathStepDistance.stepIndex,
+					pathStepDistance.pathStepIndex,
+					pathStepDistance.distance
+				)
 			}
 
-			fun fromStepSegment(routeIndex: Int, stepSegmentDistance: StepSegmentDistance): RouteDistance {
-				return RouteDistance(routeIndex, stepSegmentDistance.stepIndex, null, stepSegmentDistance.distance)
+			fun fromStepSegment(
+				routeIndex: Int,
+				stepSegmentDistance: StepSegmentDistance
+			): RouteDistance {
+				return RouteDistance(
+					routeIndex,
+					stepSegmentDistance.stepIndex,
+					null,
+					stepSegmentDistance.distance
+				)
 			}
 		}
 	}
@@ -287,7 +357,7 @@ class RoutingService(private val planning: Planning, private val routingDataList
 			return PositionRuler.of(position)?.let { ruler ->
 				routes?.mapIndexed { index, route ->
 					closestPathStep(ruler, route)?.let { RouteDistance.fromPathStep(index, it) }
-							?: closestStepSegment(ruler, route)?.let { fromStepSegment(index, it) }
+						?: closestStepSegment(ruler, route)?.let { fromStepSegment(index, it) }
 				}?.filterNotNull()
 			}
 		}
@@ -302,13 +372,16 @@ class RoutingService(private val planning: Planning, private val routingDataList
 			}?.filterNotNull()?.minWithOrNull { o1, o2 ->
 				o1.distance.compareTo(o2.distance)
 			}?.let {
-				PathStepDistance(it.stepIndex,it.pathStepIndex, sqrt(it.distance))
+				PathStepDistance(it.stepIndex, it.pathStepIndex, sqrt(it.distance))
 			}
 		}
 
 		fun closestStepSegment(ruler: PositionRuler, route: Route): StepSegmentDistance? {
 
-			class Previous(val step: Step? = null, val stepSegmentDistance: StepSegmentDistance? = null)
+			class Previous(
+				val step: Step? = null,
+				val stepSegmentDistance: StepSegmentDistance? = null
+			)
 
 			return route.steps?.foldRightIndexed(Previous(), { index, step, previous ->
 				if (previous.step == null) {
@@ -316,18 +389,22 @@ class RoutingService(private val planning: Planning, private val routingDataList
 				} else {
 					val distance = ruler.pointToSegmentDistance(step, previous.step)
 					Previous(
-							step,
-							if (previous.stepSegmentDistance == null || previous.stepSegmentDistance.distance > distance) {
-								StepSegmentDistance(index, distance)
-							} else {
-								previous.stepSegmentDistance
-							}
+						step,
+						if (previous.stepSegmentDistance == null || previous.stepSegmentDistance.distance > distance) {
+							StepSegmentDistance(index, distance)
+						} else {
+							previous.stepSegmentDistance
+						}
 					)
 				}
 			})?.stepSegmentDistance
 		}
 
-		fun getExistingWaypointIndices(positions: List<Position>, routes: List<Route>, maxDistance: Double): List<List<Int>> {
+		fun getExistingWaypointIndices(
+			positions: List<Position>,
+			routes: List<Route>,
+			maxDistance: Double
+		): List<List<Int>> {
 			val maxSquareDistance = maxDistance.times(maxDistance)
 			return positions.map { position ->
 				PositionRuler.of(position)?.let { ruler ->

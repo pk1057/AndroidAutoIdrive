@@ -85,6 +85,8 @@ object L {
 	var EVPLANNING_INVALID = "Outdated"
 	var EVPLANNING_OFFSET = "Offset"
 
+	var EVPLANNING_ACTION_PLAN = "Trigger new Planning"
+
 	var EVPLANNING_AUTO_REPLAN_ENABLE = "Automatic Replanning"
 	var EVPLANNING_MAX_SPEED_SPORT = "Sport"
 	var EVPLANNING_MAX_SPEED_COMFORT = "Comfort"
@@ -92,6 +94,7 @@ object L {
 	var EVPLANNING_MAX_SPEED_ECO_PRO_PLUS = "Eco Pro Plus"
 	var EVPLANNING_MAX_SPEED = "Maximum speed"
 	var EVPLANNING_MAX_SPEED_DRIVEMODE_ENABLE = "Use Driving-mode for Maximum-speed"
+	var EVPLANNING_REFERENCE_CONSUMPTION = "Reference Consumption"
 
 	fun loadResources(context: Context, locale: Locale? = null) {
 		val thisContext = if (locale == null) { context } else {

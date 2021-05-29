@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package me.hufman.androidautoidrive.evplanning
 
 import me.hufman.androidautoidrive.CarThread
-import me.hufman.androidautoidrive.carapp.evplanning.CarDataListenerRaw
+import me.hufman.androidautoidrive.carapp.evplanning.CarApplicationListener
 import me.hufman.androidautoidrive.carapp.evplanning.Position
 import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningDataViewModel
 
@@ -60,7 +60,7 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 	private var internalTemperature: Int = Int.MIN_VALUE
 	private var externalTemperature: Int = Int.MIN_VALUE
 
-	val rawCarDataListener = object : CarDataListenerRaw {
+	val rawCarDataListener = object : CarApplicationListener {
 		override fun onPositionChanged(position: Position) {
 			this@RoutingServiceUpdater.position = position
 		}
@@ -103,6 +103,12 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 
 		override fun onExternalTemperatureChanged(externalTemperature: Int) {
 			this@RoutingServiceUpdater.externalTemperature = externalTemperature
+		}
+
+		override fun onActionPlan() {
+			threadRouting?.post {
+				routingService?.planNew()
+			}
 		}
 	}
 

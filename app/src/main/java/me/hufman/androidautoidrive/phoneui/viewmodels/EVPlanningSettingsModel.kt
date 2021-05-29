@@ -21,4 +21,5 @@ class EVPlanningSettingsModel(appContext: Context): ViewModel() {
 	val maxSpeedEcoPlus = StringLiveSetting(appContext,AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS)
 	val maxSpeed = StringLiveSetting(appContext,AppSettings.KEYS.EVPLANNING_MAXSPEED)
 	val maxSpeedDrivemodeEnable = BooleanLiveSetting(appContext,AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE)
+	val referenceConsumption = StringLiveSetting(appContext,AppSettings.KEYS.EVPLANNING_REFERENCE_CONSUMPTION)
 }

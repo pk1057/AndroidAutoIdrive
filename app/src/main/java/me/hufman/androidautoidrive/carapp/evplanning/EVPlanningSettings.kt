@@ -41,6 +41,7 @@ class EVPlanningSettings(val capabilities: Map<String, String?>, val btStatus: B
 			AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT,
 			AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO,
 			AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS,
+			AppSettings.KEYS.EVPLANNING_REFERENCE_CONSUMPTION,
 	)
 
 	fun getSettings(): List<AppSettings.KEYS> {

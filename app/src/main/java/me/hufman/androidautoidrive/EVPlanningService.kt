@@ -71,10 +71,9 @@ class EVPlanningService(val context: Context, val iDriveConnectionStatus: IDrive
 										settings.btStatus.register()
 
 										// both navigationModel and navigationController shall only be synchronously accessed within carAppThread:
-										val navigationModel = NavigationModel()
-										val navigationController = NavigationController(context, navigationModel)
+										val navigationModelController = NavigationModelController(context)
 										// other threads use navigationModelUpdater for asynchronous updates
-										navigationModelUpdater.navigationController = navigationController
+										navigationModelUpdater.navigationModelController = navigationModelController
 
 										carApplication = EVPlanningApplication(iDriveConnectionStatus, securityAccess,
 												CarAppAssetManager(context, "basecoreOnlineServices"),
@@ -82,7 +81,7 @@ class EVPlanningService(val context: Context, val iDriveConnectionStatus: IDrive
 												PhoneAppResourcesAndroid(context),
 												GraphicsHelpersAndroid(),
 												routingServiceUpdater.rawCarDataListener,
-												settings, navigationController)
+												settings, navigationModelController)
 
 										carApplication?.onCreate(context, handler)
 										// routingServiceUpdater will post aggregated CarData to routingService once a second.

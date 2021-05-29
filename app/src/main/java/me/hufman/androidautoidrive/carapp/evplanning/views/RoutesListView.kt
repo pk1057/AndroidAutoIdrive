@@ -72,6 +72,7 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 	val settingsList: RHMIComponent.List
 
 	var onRoutesListClicked: ((Int) -> Unit)? = null
+	var onActionPlanClicked: (() -> Unit)? = null
 
 	var visible = false                 // whether the notification list is showing
 
@@ -88,7 +89,15 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 
 	val iconFlag: ByteArray?
 
-	val menuSettingsListData = object : RHMIListAdapter<AppSettings.KEYS>(5, settings.getSettings()) {
+	val actions = listOf(L.EVPLANNING_ACTION_PLAN )
+
+	val actionsListData = object : RHMIListAdapter<String>(3, actions ) {
+		override fun convertRow(index: Int, item: String): Array<Any> {
+			return arrayOf("","",item)
+		}
+	}
+
+	val settingsListData = object : RHMIListAdapter<AppSettings.KEYS>(5, settings.getSettings()) {
 		override fun convertRow(index: Int, item: AppSettings.KEYS): Array<Any> {
 			val isString = settings.isStringSetting(item)
 			val value = if (isString) { settings.getStringSetting(item) } else ""
@@ -104,6 +113,7 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 				AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS -> L.EVPLANNING_MAX_SPEED_ECO_PRO_PLUS
 				//TODO need cardata value of drive-mode sport
 				// AppSettings.KEYS.EVPLANNING_MAXSPEED_SPORT -> L.EVPLANNING_MAX_SPEED_SPORT
+				AppSettings.KEYS.EVPLANNING_REFERENCE_CONSUMPTION -> L.EVPLANNING_REFERENCE_CONSUMPTION
 				else -> ""
 			}
 			return arrayOf(checkmark, "", name, "", value)
@@ -152,6 +162,8 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 				settings.callback = {
 					redrawSettingsList()
 				}
+
+				redrawActionsList()
 			} else {
 				settings.callback = null
 			}
@@ -161,15 +173,18 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 		state.setProperty(RHMIProperty.PropertyId.HMISTATE_TABLETYPE, 3)
 		state.componentsList.forEach { it.setVisible(false) }
 
-		routesList.setVisible(true)
-		routesList.setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*")
-		routesList.setProperty(RHMIProperty.PropertyId.BOOKMARKABLE, true)
-		routesList.getAction()?.asRAAction()?.rhmiActionCallback = object : RHMIActionListCallback {
-			override fun onAction(index: Int, invokedBy: Int?) {
-				if (invokedBy != 2) {       // don't change the navigationEntry
-					onRoutesListClicked?.invoke(index)
+		routesList.apply {
+			routesList.setVisible(true)
+			routesList.setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*")
+			routesList.setProperty(RHMIProperty.PropertyId.BOOKMARKABLE, true)
+			routesList.getAction()?.asRAAction()?.rhmiActionCallback =
+				object : RHMIActionListCallback {
+					override fun onAction(index: Int, invokedBy: Int?) {
+						if (invokedBy != 2) {       // don't change the navigationEntry
+							onRoutesListClicked?.invoke(index)
+						}
+					}
 				}
-			}
 		}
 
 		routesList.getSelectAction()?.asRAAction()?.rhmiActionCallback = RHMIActionListCallback {
@@ -179,10 +194,23 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 			}
 		}
 
-		actionsLabel.getModel()?.asRaDataModel()?.value = L.EVPLANNING_ACTIONS
-		actionsLabel.setVisible(true)
-		actionsLabel.setEnabled(false)
-		actionsLabel.setSelectable(false)
+		actionsLabel.apply {
+			getModel()?.asRaDataModel()?.value = L.EVPLANNING_ACTIONS
+			setVisible(true)
+			setEnabled(false)
+			setSelectable(false)
+		}
+
+		actionsList.apply {
+			setVisible(true)
+			setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id,"55,0,*")
+			getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionListCallback { index ->
+				when(index) {
+					0 -> onActionPlanClicked?.invoke()
+				}
+				throw RHMIActionAbort()
+			}
+		}
 
 		if (settings.getSettings().isNotEmpty()) {
 			settingsLabel?.apply {
@@ -195,7 +223,7 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 				setVisible(true)
 				setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*,0,100")
 				getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionListCallback { index ->
-					val setting = menuSettingsListData.realData.getOrNull(index)
+					val setting = settingsListData.realData.getOrNull(index)
 					setting?.let {
 						if (settings.isBooleanSetting(it)) {
 							settings.toggleSetting(it)
@@ -279,6 +307,10 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 	}
 
 	fun redrawSettingsList() {
-		settingsList?.getModel()?.value = menuSettingsListData
+		settingsList?.getModel()?.value = settingsListData
+	}
+
+	fun redrawActionsList() {
+		actionsList?.getModel()?.value = actionsListData
 	}
 }

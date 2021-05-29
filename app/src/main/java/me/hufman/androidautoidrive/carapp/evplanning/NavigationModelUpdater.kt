@@ -35,7 +35,7 @@ import java.util.*
 class NavigationModelUpdater() {
 
 	var threadCarApp: CarThread? = null
-	var navigationController: NavigationController? = null
+	var navigationModelController: NavigationModelController? = null
 	var existingPlan: Plan? = null
 
 	val routingDataListener = object : RoutingDataListener {
@@ -46,20 +46,20 @@ class NavigationModelUpdater() {
 			val displayRoutes = existingPlan?.routes?.let { parseRoutingData(it, routingData) }
 
 			threadCarApp?.post {
-				navigationController?.setDisplayRoutes(displayRoutes)
+				navigationModelController?.setDisplayRoutes(displayRoutes)
 			}
 		}
 
 		override fun onPlanChanged(plan: Plan?) {
 			existingPlan = plan
 			threadCarApp?.post {
-				navigationController?.invalidateAll()
+				navigationModelController?.invalidateAll()
 			}
 		}
 
 		override fun onPlanningTriggered() {
 			threadCarApp?.post {
-				navigationController?.planningTriggered()
+				navigationModelController?.planningTriggered()
 			}
 		}
 	}
@@ -70,7 +70,7 @@ class NavigationModelUpdater() {
 
 	fun onDestroy() {
 		this.threadCarApp = null
-		this.navigationController = null
+		this.navigationModelController = null
 	}
 
 	companion object {

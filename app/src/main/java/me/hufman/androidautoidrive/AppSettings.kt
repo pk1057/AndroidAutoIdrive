@@ -55,6 +55,7 @@ interface AppSettings {
 		EVPLANNING_MAXSPEED_ECO_PRO_PLUS("EVPlanning_Maxspeed_EcoPlus", "90", "Maximum speed in drivingmode EcoProPlus"),
 		EVPLANNING_MAXSPEED("EVPlanning_Maxspeed", "110", "Maximum speed"),
 		EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE("EVPLanning_Maxspeed_Override_enable", "false", "Use Drive-mode for Maximum Speed"),
+		EVPLANNING_REFERENCE_CONSUMPTION("EVPlanning_Reference_Consumption", "165", "Reference Consumption"),
 	}
 
 	/** Store the active preferences in a singleton */
