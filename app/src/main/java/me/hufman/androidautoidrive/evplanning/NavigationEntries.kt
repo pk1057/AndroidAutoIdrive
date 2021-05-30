@@ -27,26 +27,30 @@ data class DisplayRoute(
 		val num_charges: Int? = null,
 		val charge_duration: Int? = null,       // total charging-time in minutes
 		val deviation: Int? = null,             // distance to closest step or pathstep of current route in meter
-		val contains_waypoint: Boolean,         // true if route contains more than just the final iDrive waypoint
+		val contains_waypoint: Boolean = false, // true if route contains more than just the final iDrive waypoint
 		val displayWaypoints: List<DisplayWaypoint>? = null,
 )
 
 data class DisplayWaypoint(
-		val icon: Drawable? = null,        // the icon in the main list
-		val title: String? = null,         // name of current location
-		val operator: String? = null,
-		val charger_type: String? = null,  // CCS, Chademo or Type2
-		val is_waypoint: Boolean,          // is this an iDrive Waypoint?
-		val address: String,
-		val trip_dst: Int? = null,         // distance to current location in meter
-		val step_dst: Int? = null,         // distance since last stop in meter
-		val soc_ariv: Int? = null,         // estimated state of charge on arrival in percent
-		val soc_dep: Int? = null,          // recommended state of charge at departure in percent
-		val eta: LocalDateTime? = null,    // estimated time of arrival
-		val etd: LocalDateTime? = null,    // estimated time of departure
-		val duration: Int? = null,         // charging duration in minutes
-		val num_chargers: Int? = null,
-		val free_chargers: Int? = null,
-		val lat: Double,
-		val lon: Double,
+	val icon: Drawable? = null,          // the icon in the main list
+	val title: String? = null,           // name of current location
+	val operator: String? = null,
+	val charger_type: String? = null,    // CCS, Chademo or Type2
+	val is_waypoint: Boolean,            // is this an iDrive Waypoint?
+	val is_initial_charger: Boolean,            // is this the current (or very close by) position?
+	val address: String,
+	val trip_dst: Int? = null,           // distance to current location in meter
+	val step_dst: Int? = null,           // distance since last stop in meter
+	val soc_ariv: Int? = null,           // estimated state of charge on arrival in percent
+	val soc_dep: Int? = null,            // recommended state of charge at departure in percent
+	val eta: LocalDateTime? = null,      // estimated time of arrival
+	val etd: LocalDateTime? = null,      // estimated time of departure
+	val duration: Int? = null,           // charging duration in minutes
+	val num_chargers: Int? = null,
+	val free_chargers: Int? = null,
+	val delta_duration: Int? = null,     // difference in total trip time in minutes (for next charger view)
+	val delta_dst: Int? = null,          // difference in total trip length in meter (for next charger view)
+	val final_num_charges: Int? = null,  // number of charging stops until final dest (for next charger view)
+	val lat: Double,
+	val lon: Double,
 )

@@ -29,11 +29,13 @@ import me.hufman.idriveconnectionkit.rhmi.*
 import java.util.ArrayList
 
 class DetailsView(
-		val state: RHMIState, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers,
-		val settings: EVPlanningSettings,
-		val focusTriggerController: FocusTriggerController,
-		val navigationModel: NavigationModel,
-		carAppAssetsIcons: Map<String, ByteArray>,
+	val state: RHMIState,
+	val phoneAppResources: PhoneAppResources,
+	val graphicsHelpers: GraphicsHelpers,
+	val settings: EVPlanningSettings,
+	val focusTriggerController: FocusTriggerController,
+	val navigationModel: NavigationModel,
+	carAppAssetsIcons: Map<String, ByteArray>,
 ) {
 	companion object {
 		fun fits(state: RHMIState): Boolean {
@@ -42,10 +44,12 @@ class DetailsView(
 						it.getModel()?.modelType?.let { RHMIModelType.of(it) } == RHMIModelType.RICHTEXT
 					} != null
 		}
+
 		const val MAX_LENGTH = 10000
 	}
 
-	var listState: RHMIState = state        // where to set the focus when the active notification disappears, linked during initWidgets
+	var listState: RHMIState =
+		state        // where to set the focus when the active notification disappears, linked during initWidgets
 	val titleWidget: RHMIComponent.List     // the widget to display the notification app's icon
 	val addressWidget: RHMIComponent.List    // the widget to display the title in
 	val descriptionWidget: RHMIComponent.List     // the widget to display the text
@@ -90,7 +94,8 @@ class DetailsView(
 		state.setProperty(RHMIProperty.PropertyId.HMISTATE_TABLETYPE, 3)
 		state.componentsList.forEach { it.setVisible(false) }
 		// separator below the title
-		state.componentsList.filterIsInstance<RHMIComponent.Separator>().forEach { it.setVisible(true) }
+		state.componentsList.filterIsInstance<RHMIComponent.Separator>()
+			.forEach { it.setVisible(true) }
 		titleWidget.apply {
 			// app icon and notification title
 			setVisible(true)
@@ -114,11 +119,12 @@ class DetailsView(
 			setEnabled(true)
 			setSelectable(true)
 		}
-		addressWidget.getAction()?.asRAAction()?.rhmiActionCallback = object: RHMIActionListCallback {
-			override fun onAction(index: Int, invokedBy: Int?) {
-				onAddressClicked?.invoke()
+		addressWidget.getAction()?.asRAAction()?.rhmiActionCallback =
+			object : RHMIActionListCallback {
+				override fun onAction(index: Int, invokedBy: Int?) {
+					onAddressClicked?.invoke()
+				}
 			}
-		}
 
 		this.listState = listView.state
 	}
@@ -134,7 +140,9 @@ class DetailsView(
 	fun show() {
 		// set the focus to the first button
 		state as RHMIState.ToolbarState
-		val buttons = ArrayList(state.toolbarComponentsList).filterIsInstance<RHMIComponent.ToolbarButton>().filter { it.action > 0}
+		val buttons =
+			ArrayList(state.toolbarComponentsList).filterIsInstance<RHMIComponent.ToolbarButton>()
+				.filter { it.action > 0 }
 		focusTriggerController.focusComponent(buttons[0])
 
 		redraw()
@@ -158,15 +166,16 @@ class DetailsView(
 		}
 
 		// prepare the app icon and title
-		val icon = display.icon?.let {graphicsHelpers.compress(it, 48, 48)} ?: ""
+		val icon = display.icon?.let { graphicsHelpers.compress(it, 48, 48) } ?: ""
+
 		val title = listOfNotNull(
-				display.title ?: L.EVPLANNING_UNKNOWN_LOC,
-				if (navigationModel.isPlanning) {
-					"[${L.EVPLANNING_REPLANNING}...]"
-				} else null,
-				if (!navigationModel.selectedWaypointValid) {
-					"[${L.EVPLANNING_INVALID}]"
-				} else null,
+			display.title ?: L.EVPLANNING_UNKNOWN_LOC,
+			if (navigationModel.isPlanning) {
+				"[${L.EVPLANNING_REPLANNING}...]"
+			} else null,
+			if (!navigationModel.selectedWaypointValid) {
+				"[${L.EVPLANNING_INVALID}]"
+			} else null,
 		).joinToString(" ")
 		val titleListData = RHMIModel.RaListModel.RHMIListConcrete(3)
 		titleListData.addRow(arrayOf(icon, "", title))
@@ -175,43 +184,60 @@ class DetailsView(
 		var sidePictureWidth = 0
 		val addressListData = RHMIModel.RaListModel.RHMIListConcrete(2)
 //		if (navigationEntry.sidePicture == null || navigationEntry.sidePicture.intrinsicHeight <= 0) {
-			addressListData.addRow(arrayOf("", display.address))
+		addressListData.addRow(arrayOf("", display.address))
 //		} else {
 //			val sidePictureHeight = 96  // force the side picture to be this tall
 //			sidePictureWidth = (sidePictureHeight.toFloat() / navigationEntry.sidePicture.intrinsicHeight * navigationEntry.sidePicture.intrinsicWidth).toInt()
 //			val sidePicture = graphicsHelpers.compress(navigationEntry.sidePicture, sidePictureWidth, sidePictureHeight)
 //			titleListData.addRow(arrayOf(BMWRemoting.RHMIResourceData(BMWRemoting.RHMIResourceType.IMAGEDATA, sidePicture), navigationEntry.title + "\n"))
 //		}
-		addressWidget.setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "$sidePictureWidth,*")
+		addressWidget.setProperty(
+			RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id,
+			"$sidePictureWidth,*"
+		)
 
 		// prepare the notification text
 		val descriptionListData = RHMIModel.RaListModel.RHMIListConcrete(1)
+		val numChargers = display.num_chargers?.let {
+			if (it > 0) {
+				"${it}(${
+					display.free_chargers?.let {
+						if (it >= 0) {
+							it
+						} else null
+					} ?: "-"
+				})"
+			} else {
+				null
+			}
+		}
 		val dist = listOfNotNull(
-				display.step_dst?.let { formatDistance(it) },
-				display.trip_dst?.let { "(${formatDistance(it)})" },
+			display.step_dst?.let { formatDistance(it) },
+			display.trip_dst?.let { "(${formatDistance(it)})" },
 		).joinToString(" ").takeIf { it.isNotEmpty() }
 		val charger = listOfNotNull(
-				display.operator?.let { "[${it}]" },
-				display.charger_type,
+			display.operator?.let { "[${it}]" },
+			numChargers,
+			display.charger_type?.toUpperCase(),
 		).joinToString(" ").takeIf { it.isNotEmpty() }
 		val soc = listOfNotNull(
-				display.soc_ariv?.let { "${it}%" },
-				display.soc_dep?.let { "${it}%" },
+			display.soc_ariv?.let { "${it}%" },
+			display.soc_dep?.let { "${it}%" },
 		).joinToString("-").takeIf { it.isNotEmpty() }
 		val time = listOfNotNull(
-				display.duration?.let { "${it}min" },
-				if (display.etd == null)
-					display.eta?.let { "${it.format(TIME_FMT)}Uhr" }
-				else
-					display.eta?.let { "${it.format(TIME_FMT)}-${display.etd.format(TIME_FMT)}Uhr" },
+			display.duration?.let { "${it}min" },
+			if (display.etd == null)
+				display.eta?.let { "${it.format(TIME_FMT)}Uhr" }
+			else
+				display.eta?.let { "${it.format(TIME_FMT)}-${display.etd.format(TIME_FMT)}Uhr" },
 		).joinToString(" ").takeIf { it.isNotEmpty() }
 
 		val text = listOfNotNull(
-				if (display.is_waypoint) L.EVPLANNING_WAYPOINT else null,
-				charger,
-				dist,
-				soc,
-				time,
+			if (display.is_waypoint) L.EVPLANNING_WAYPOINT else null,
+			charger,
+			dist,
+			soc,
+			time,
 		).joinToString("\n")
 		descriptionListData.addRow(arrayOf(text))
 

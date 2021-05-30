@@ -65,7 +65,8 @@ interface CarApplicationListener {
 	fun onInternalTemperatureChanged(internalTemperature: Int)
 	fun onExternalTemperatureChanged(externalTemperature: Int)
 
-	fun onActionPlan()
+	fun triggerNewPlanning()
+	fun triggerAlternativesPlanning()
 }
 
 class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, val securityAccess: SecurityAccess, val carAppAssets: CarAppResources, val carAppAssetsIcons: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers, private val carApplicationListener: CarApplicationListener, val settings: EVPlanningSettings, val navigationModelController: NavigationModelController) {
@@ -279,12 +280,12 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 
 		with(navigationModelController.navigationModel) {
 
-			displayRoutesObserver = {
+			routesListObserver = {
 				viewRoutesList.redrawRoutes()
 			}
 
-			selectedRouteObserver = {
-				viewWaypointList.redrawWaypoints()
+			waypointListObserver = {
+				viewWaypointList.redraw()
 			}
 
 			selectedWaypointObserver = {
@@ -301,7 +302,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				}
 			}
 			onActionPlanClicked = {
-				carApplicationListener.onActionPlan()
+				carApplicationListener.triggerNewPlanning()
 			}
 		}
 
@@ -312,6 +313,16 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 				} else {
 					hideDetailsViewFromListAction()
 				}
+			}
+			onActionPlanAlternativesClicked = {
+				carApplicationListener.triggerAlternativesPlanning()
+				navigationModelController.switchToAlternatives()
+			}
+			onActionShowAlternativesClicked = {
+				navigationModelController.switchToAlternatives()
+			}
+			onActionShowAllWaypointsClicked = {
+				navigationModelController.switchToAllWaypoints()
 			}
 		}
 

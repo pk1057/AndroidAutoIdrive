@@ -42,6 +42,7 @@ data class RoutingData(
 interface RoutingDataListener {
 	fun onRoutingDataChanged(routingData: RoutingData)
 	fun onPlanChanged(plan: Plan?)
+	fun onNextChargerPlanChanged(plan: Plan?)
 	fun onPlanningTriggered()
 }
 
@@ -125,21 +126,17 @@ class RoutingService(
 		} else { // new is not empty
 			if (routes == null) {
 				// no preexisting routing result:
-				planNew()
-				return
-			}
-			if (newDestinations.last() != previousDestinations.lastOrNull()) {
+				shouldReplan = true
+			} else if (newDestinations.last() != previousDestinations.lastOrNull()) {
 				// final destination has changed:
-				planNew()
-				return
+				shouldReplan = true
 			} else {
 				// final destination is unchanged and next destination exists:
 				existingWaypointIndices =
 					getExistingWaypointIndices(newDestinations, routes, MAX_WAYPOINT_DISTANCE)
 				if (existingWaypointIndices.isEmpty()) {
 					// next destination does not belong to an existing route
-					planNew()
-					return
+					shouldReplan = true
 				}
 			}
 		}
@@ -176,7 +173,8 @@ class RoutingService(
 
 	fun isReplanEnabled() = getAppSettingBoolean(AppSettings.KEYS.EVPLANNING_AUTO_REPLAN)
 
-	fun isDriveModeEnabled() = getAppSettingBoolean(AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE)
+	fun isDriveModeEnabled() =
+		getAppSettingBoolean(AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE)
 
 	private fun getAppSettingBoolean(setting: AppSettings.KEYS): Boolean {
 		return appSettings?.get(setting)?.toBoolean() == true
@@ -221,6 +219,12 @@ class RoutingService(
 			routingDataListener.onPlanChanged(value?.result)
 		}
 
+	private var nextChargerResult: PlanResult? = null
+		set(value) {
+			field = value
+			routingDataListener.onNextChargerPlanChanged(value?.result)
+		}
+
 	private fun triggerPlanning(
 		find_alts: Boolean? = null,
 		find_next_charger_alts: Boolean? = null,
@@ -260,12 +264,13 @@ class RoutingService(
 					{
 						if (find_next_charger_alts == true) {
 							handler?.post {
-								planResult = it
+								nextChargerResult = it
 								error = null
 								routingInProgress = false
 							}
 						} else {
 							handler?.post {
+								nextChargerResult = null
 								planResult = it
 								error = null
 								routingInProgress = false

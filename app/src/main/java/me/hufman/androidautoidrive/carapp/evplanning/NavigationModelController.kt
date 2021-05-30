@@ -28,6 +28,7 @@ import java.util.*
 class NavigationModel {
 
 	var isPlanning: Boolean = false
+	var isNextChargerMode: Boolean = false
 
 	var displayRoutesValid: Boolean = false
 	var selectedRouteValid: Boolean = false
@@ -35,13 +36,15 @@ class NavigationModel {
 
 	var displayRoutes: List<DisplayRoute>? = null
 	var selectedRoute: List<DisplayWaypoint>? = null
+	var nextChargerWaypoints: List<DisplayWaypoint>? = null
+	var nextChargerWaypointsValid: Boolean = false
 	var selectedWaypoint: DisplayWaypoint? = null
 
 	var selectedRouteIndex: Int? = null
 	var selectedWaypointIndex: Int? = null
 
-	var displayRoutesObserver: (() -> Unit)? = null
-	var selectedRouteObserver: (() -> Unit)? = null
+	var routesListObserver: (() -> Unit)? = null
+	var waypointListObserver: (() -> Unit)? = null
 	var selectedWaypointObserver: (() -> Unit)? = null
 }
 
@@ -54,7 +57,7 @@ class NavigationModelController(val context: Context) {
 			selectedRouteIndex = index
 			selectedRoute = displayRoutes?.getOrNull(index)?.displayWaypoints
 			selectedRouteValid = displayRoutesValid
-			selectedRouteObserver?.invoke()
+			waypointListObserver?.invoke()
 			return selectedRoute != null
 		}
 	}
@@ -62,7 +65,11 @@ class NavigationModelController(val context: Context) {
 	fun selectWaypoint(index: Int): Boolean {
 		with(navigationModel) {
 			selectedWaypointIndex = index
-			selectedWaypoint = selectedRoute?.getOrNull(index)
+			selectedWaypoint = if (isNextChargerMode) {
+				nextChargerWaypoints?.getOrNull(index)
+			} else {
+				selectedRoute?.getOrNull(index)
+			}
 			selectedWaypointValid = selectedRouteValid
 			selectedWaypointObserver?.invoke()
 			return selectedWaypoint != null
@@ -88,21 +95,64 @@ class NavigationModelController(val context: Context) {
 		navigationModel.apply {
 			displayRoutes = newDisplayRoutes
 			displayRoutesValid = true
-			displayRoutesObserver?.invoke()
-			selectedRouteIndex?.let {
-				selectedRoute = displayRoutes?.getOrNull(it)?.displayWaypoints
-				selectedRouteValid = true
-				selectedRouteObserver?.invoke()
-			}
-			selectedWaypointIndex?.let {
-				selectedWaypoint = selectedRoute?.getOrNull(it)
-				selectedWaypointValid = true
-				selectedWaypointObserver?.invoke()
+			routesListObserver?.invoke()
+			if (!isNextChargerMode) {
+				selectedRouteIndex?.let {
+					selectedRoute = displayRoutes?.getOrNull(it)?.displayWaypoints
+					selectedRouteValid = true
+					waypointListObserver?.invoke()
+				}
+				selectedWaypointIndex?.let {
+					selectedWaypoint = selectedRoute?.getOrNull(it)
+					selectedWaypointValid = true
+					selectedWaypointObserver?.invoke()
+				}
 			}
 		}
 	}
 
-	fun invalidateAll() {
+	fun setNextChargerWaypoints(displayWaypoints: List<DisplayWaypoint>?) {
+		navigationModel.apply {
+			if (displayWaypoints == null) {
+				if (isNextChargerMode) {
+					isNextChargerMode = false
+					selectedWaypointIndex = null
+					selectedWaypointValid = false
+					selectedWaypointObserver?.invoke()
+				}
+			} else {
+				if (nextChargerWaypoints == null) {
+					isNextChargerMode = true
+					selectedWaypointIndex = null
+				}
+			}
+			nextChargerWaypoints = displayWaypoints
+			if (isNextChargerMode) {
+				selectedWaypointIndex?.let {
+					selectedWaypoint = nextChargerWaypoints?.getOrNull(it)
+					selectedWaypointValid = true
+					selectedWaypointObserver?.invoke()
+				}
+				waypointListObserver?.invoke()
+			}
+		}
+	}
+
+	fun switchToAllWaypoints() {
+		navigationModel.apply {
+			isNextChargerMode = false
+			waypointListObserver?.invoke()
+		}
+	}
+
+	fun switchToAlternatives() {
+		navigationModel.apply {
+			isNextChargerMode = true
+			waypointListObserver?.invoke()
+		}
+	}
+
+	fun planningFinished() {
 		navigationModel.apply {
 			isPlanning = false
 			displayRoutesValid = false
@@ -110,8 +160,20 @@ class NavigationModelController(val context: Context) {
 			selectedWaypointValid = false
 			selectedRouteIndex = null // delete the indices only so anything that is on screen will stay for now
 			selectedWaypointIndex = null
-			displayRoutesObserver?.invoke()
-			selectedRouteObserver?.invoke()
+			isNextChargerMode = false
+			routesListObserver?.invoke()
+			waypointListObserver?.invoke()
+			selectedWaypointObserver?.invoke()
+		}
+	}
+
+	fun nextChargerFinished() {
+		navigationModel.apply {
+			isPlanning = false
+			selectedWaypointIndex = null
+			selectedWaypointValid = false
+			routesListObserver?.invoke()
+			waypointListObserver?.invoke()
 			selectedWaypointObserver?.invoke()
 		}
 	}
@@ -119,8 +181,8 @@ class NavigationModelController(val context: Context) {
 	fun planningTriggered() {
 		navigationModel.apply {
 			isPlanning = true
-			displayRoutesObserver?.invoke()
-			selectedRouteObserver?.invoke()
+			routesListObserver?.invoke()
+			waypointListObserver?.invoke()
 			selectedWaypointObserver?.invoke()
 		}
 	}

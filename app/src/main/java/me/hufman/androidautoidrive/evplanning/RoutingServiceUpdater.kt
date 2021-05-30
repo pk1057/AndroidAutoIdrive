@@ -105,9 +105,15 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 			this@RoutingServiceUpdater.externalTemperature = externalTemperature
 		}
 
-		override fun onActionPlan() {
+		override fun triggerNewPlanning() {
 			threadRouting?.post {
 				routingService?.planNew()
+			}
+		}
+
+		override fun triggerAlternativesPlanning() {
+			threadRouting?.post {
+				routingService?.planAlternateNext()
 			}
 		}
 	}

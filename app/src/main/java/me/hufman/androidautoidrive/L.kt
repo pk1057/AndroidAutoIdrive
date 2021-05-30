@@ -76,7 +76,7 @@ object L {
 	var EVPLANNING_TITLE_ROUTES = "EVPlanning - Routes"
 	var EVPLANNING_TITLE_WAYPOINTS = "EVPlanning - Waypoints"
 	var EVPLANNING_TITLE_ALTERNATIVES = "EVPlanning - Alternatives"
-	var EVPLANNING_REPLANNING = "Replanning"
+	var EVPLANNING_REPLANNING = "Planning in Progress"
 	var EVPLANNING_EMPTY_LIST = "No Charging Stops"
 	var EVPLANNING_ACTIONS = "Actions"
 	var EVPLANNING_OPTIONS = "Options"
@@ -86,6 +86,9 @@ object L {
 	var EVPLANNING_OFFSET = "Offset"
 
 	var EVPLANNING_ACTION_PLAN = "Trigger new Planning"
+	var EVPLANNING_ACTION_PLAN_ALTERNATIVES = "Trigger Planning of Next Charger Alternatives"
+	var EVPLANNING_ACTION_SHOW_ALTERNATIVES = "Show Next Charger Alternatives"
+	var EVPLANNING_ACTION_SHOW_ALL_WAYPOINTS = "Show all Waypoints of selected Route"
 
 	var EVPLANNING_AUTO_REPLAN_ENABLE = "Automatic Replanning"
 	var EVPLANNING_MAX_SPEED_SPORT = "Sport"

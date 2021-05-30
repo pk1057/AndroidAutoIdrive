@@ -19,43 +19,55 @@ package me.hufman.androidautoidrive.carapp.evplanning.views
 
 import android.os.Handler
 import android.util.Log
-import de.bmw.idrive.BMWRemoting
 import me.hufman.androidautoidrive.*
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
+import me.hufman.androidautoidrive.carapp.RHMIActionAbort
 import me.hufman.androidautoidrive.carapp.RHMIListAdapter
 import me.hufman.androidautoidrive.carapp.evplanning.*
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.TIME_FMT
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistance
+import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatTime
+import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatTimeDifference
 import me.hufman.androidautoidrive.carapp.evplanning.TAG
 import me.hufman.androidautoidrive.evplanning.DisplayWaypoint
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.idriveconnectionkit.rhmi.*
+import java.util.*
 import kotlin.reflect.KClass
 
-class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers, val settings: EVPlanningSettings,
-                        val focusTriggerController: FocusTriggerController, val navigationModel: NavigationModel, val carAppImages: Map<String, ByteArray>) {
+class WaypointsListView(
+	val state: RHMIState,
+	val graphicsHelpers: GraphicsHelpers,
+	val settings: EVPlanningSettings,
+	val focusTriggerController: FocusTriggerController,
+	val navigationModel: NavigationModel,
+	val carAppImages: Map<String, ByteArray>
+) {
 	companion object {
-		const val INTERACTION_DEBOUNCE_MS = 2000              // how long to wait after lastInteractionTime to update the list
-		const val SKIPTHROUGH_THRESHOLD = 2000                // how long after an entrybutton push to allow skipping through to a current notification
-		const val ARRIVAL_THRESHOLD = 8000                    // how long after a new notification should it skip through
+		const val INTERACTION_DEBOUNCE_MS =
+			2000              // how long to wait after lastInteractionTime to update the list
+		const val SKIPTHROUGH_THRESHOLD =
+			2000                // how long after an entrybutton push to allow skipping through to a current notification
+		const val ARRIVAL_THRESHOLD =
+			8000                    // how long after a new notification should it skip through
 
 		val required = listOf(
-				RHMIComponent.List::class,
-				RHMIComponent.Label::class,
-				RHMIComponent.List::class,
-				RHMIComponent.Label::class,
-				RHMIComponent.List::class,
+			RHMIComponent.List::class,
+			RHMIComponent.Label::class,
+			RHMIComponent.List::class,
+			RHMIComponent.Label::class,
+			RHMIComponent.List::class,
 		)
 
 		fun fits(state: RHMIState): Boolean {
 			return state.componentsList.fold(
-					required.toMutableList(),
-					{ acc, comp ->
-						if (acc.firstOrNull()?.isInstance(comp) == true) {
-							acc.removeFirst()
-						}
-						acc
+				required.toMutableList(),
+				{ acc, comp ->
+					if (acc.firstOrNull()?.isInstance(comp) == true) {
+						acc.removeFirst()
 					}
+					acc
+				}
 			).isEmpty()
 		}
 
@@ -69,6 +81,9 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 	val settingsList: RHMIComponent.List
 
 	var onWaypointListClicked: ((Int) -> Unit)? = null
+	var onActionPlanAlternativesClicked: (() -> Unit)? = null
+	var onActionShowAlternativesClicked: (() -> Unit)? = null
+	var onActionShowAllWaypointsClicked: (() -> Unit)? = null
 
 	var visible = false                 // whether the notification list is showing
 
@@ -85,34 +100,21 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 		addRow(arrayOf("", L.EVPLANNING_EMPTY_LIST, "", "", ""))
 	}
 
-	val menuSettingsListData = object : RHMIListAdapter<AppSettings.KEYS>(3, settings.getSettings()) {
-		override fun convertRow(index: Int, item: AppSettings.KEYS): Array<Any> {
-			val checked = settings.isChecked(item)
-			val checkmark = if (checked) BMWRemoting.RHMIResourceIdentifier(BMWRemoting.RHMIResourceType.IMAGEID, IMAGEID_CHECKMARK) else ""
-			val name = when (item) {
-				AppSettings.KEYS.ENABLED_NOTIFICATIONS_POPUP -> L.NOTIFICATION_POPUPS
-				AppSettings.KEYS.ENABLED_NOTIFICATIONS_POPUP_PASSENGER -> L.NOTIFICATION_POPUPS_PASSENGER
-				AppSettings.KEYS.NOTIFICATIONS_SOUND -> L.NOTIFICATION_SOUND
-				AppSettings.KEYS.NOTIFICATIONS_READOUT -> L.NOTIFICATION_READOUT
-				AppSettings.KEYS.NOTIFICATIONS_READOUT_POPUP -> L.NOTIFICATION_READOUT_POPUP
-				AppSettings.KEYS.NOTIFICATIONS_READOUT_POPUP_PASSENGER -> L.NOTIFICATION_READOUT_POPUP_PASSENGER
-				else -> ""
-			}
-			return arrayOf(checkmark, "", name)
-		}
-	}
-
 	init {
-		class Acc(val result: MutableList<RHMIComponent>, val req: MutableList<KClass<out RHMIComponent>>)
+		class Acc(
+			val result: MutableList<RHMIComponent>,
+			val req: MutableList<KClass<out RHMIComponent>>
+		)
+
 		val components = state.componentsList.fold(
-				Acc(mutableListOf(), required.toMutableList()),
-				{ acc, comp ->
-					if (acc.req.firstOrNull()?.isInstance(comp) == true) {
-						acc.req.removeFirst()
-						acc.result.add(comp)
-					}
-					acc
+			Acc(mutableListOf(), required.toMutableList()),
+			{ acc, comp ->
+				if (acc.req.firstOrNull()?.isInstance(comp) == true) {
+					acc.req.removeFirst()
+					acc.result.add(comp)
 				}
+				acc
+			}
 		).result
 		waypointsList = components.removeFirst() as RHMIComponent.List
 		actionsLabel = components.removeFirst() as RHMIComponent.Label
@@ -130,7 +132,7 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 			if (focused) {
 				val didEntryButton = timeSinceEntryButton < SKIPTHROUGH_THRESHOLD
 				// if we did not skip through, refresh:
-				redrawWaypoints()
+				redraw()
 
 				// if a notification is speaking, pre-select it
 				// otherwise pre-select the most recent notification that showed up or was selected
@@ -140,10 +142,7 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 					focusTriggerController.focusComponent(waypointsList, index)
 				}
 
-//				redrawSettingsList()
-//				settings.callback = {
-//					redrawSettingsList()
-//				}
+				redrawActionsList()
 			} else {
 				settings.callback = null
 			}
@@ -156,13 +155,14 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 		waypointsList.setVisible(true)
 		waypointsList.setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*,0,150")
 		waypointsList.setProperty(RHMIProperty.PropertyId.BOOKMARKABLE, true)
-		waypointsList.getAction()?.asRAAction()?.rhmiActionCallback = object : RHMIActionListCallback {
-			override fun onAction(index: Int, invokedBy: Int?) {
-				if (invokedBy != 2) {       // don't change the navigationEntry
-					onWaypointListClicked?.invoke(index)
+		waypointsList.getAction()?.asRAAction()?.rhmiActionCallback =
+			object : RHMIActionListCallback {
+				override fun onAction(index: Int, invokedBy: Int?) {
+					if (invokedBy != 2) {       // don't change the navigationEntry
+						onWaypointListClicked?.invoke(index)
+					}
 				}
 			}
-		}
 
 		waypointsList.getSelectAction()?.asRAAction()?.rhmiActionCallback = RHMIActionListCallback {
 			if (it != lastInteractionIndex) {
@@ -171,34 +171,27 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 			}
 		}
 
-		actionsLabel.getModel()?.asRaDataModel()?.value = L.EVPLANNING_ACTIONS
-		actionsLabel.setVisible(true)
-		actionsLabel.setEnabled(false)
-		actionsLabel.setSelectable(false)
+		actionsLabel.apply {
+			getModel()?.asRaDataModel()?.value = L.EVPLANNING_ACTIONS
+			setVisible(true)
+			setEnabled(false)
+			setSelectable(false)
+		}
 
-		settingsLabel.getModel()?.asRaDataModel()?.value = L.EVPLANNING_OPTIONS
-		settingsLabel.setVisible(true)
-		settingsLabel.setEnabled(false)
-		settingsLabel.setSelectable(false)
-
-//		if (settings.getSettings().isNotEmpty()) {
-//			state.componentsList.filterIsInstance<RHMIComponent.Label>().lastOrNull()?.let {
-//				it.getModel()?.asRaDataModel()?.value = L.EVPLANNING_OPTIONS
-//				it.setVisible(true)
-//				it.setEnabled(false)
-//				it.setSelectable(false)
-//			}
-//
-//			settingsListView.setVisible(true)
-//			settingsListView.setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*")
-//			settingsListView.getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionListCallback { index ->
-//				val setting = menuSettingsListData.realData.getOrNull(index)
-//				if (setting != null) {
-//					settings.toggleSetting(setting)
-//				}
-//				throw RHMIActionAbort()
-//			}
-//		}
+		actionsList.apply {
+			setVisible(true)
+			setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*")
+			getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionListCallback { index ->
+				currentActions?.getOrNull(index)?.let {
+					when(it) {
+						WaypointListActions.PLAN_ALTERNATIVES -> onActionPlanAlternativesClicked?.invoke()
+						WaypointListActions.SHOW_ALTERNATIVES -> onActionShowAlternativesClicked?.invoke()
+						WaypointListActions.SHOW_ALL_WAYPOINTS -> onActionShowAllWaypointsClicked?.invoke()
+					}
+				}
+				throw RHMIActionAbort()
+			}
+		}
 	}
 
 	fun onCreate(handler: Handler) {
@@ -216,12 +209,12 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 		val deferredUpdate = this.deferredUpdate
 		if (deferredUpdate == null) {
 			Log.w(TAG, "DeferredUpdate not built yet, redrawing immediately")
-			redrawWaypoints()
+			redraw()
 		} else {
 			deferredUpdate.trigger(0) {
 				if (visible) {
 					Log.i(TAG, "Updating list of notifications")
-					redrawWaypoints()
+					redraw()
 				} else {
 					Log.i(TAG, "Notification list is not on screen, skipping update")
 				}
@@ -230,12 +223,74 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 		}
 	}
 
+	fun redraw() {
+		if (!visible) {
+			return
+		}
+		redrawWaypoints()
+		redrawActionsList()
+	}
+
 	// should only be run from the DeferredUpdate thread, once at a time, but synchronize just in case
 	fun redrawWaypoints() {
 		if (!visible) {
 			return
 		}
 
+		if (navigationModel.isNextChargerMode) {
+			drawNextChargers()
+		} else {
+			drawSelectedRoute()
+		}
+	}
+
+	fun drawNextChargers() {
+		state.getTextModel()?.asRaDataModel()?.value = listOfNotNull(
+			L.EVPLANNING_TITLE_ALTERNATIVES,
+			if (navigationModel.isPlanning) {
+				"[${L.EVPLANNING_REPLANNING}...]"
+			} else null,
+		).joinToString(" ")
+
+		val waypoints = navigationModel.nextChargerWaypoints
+		if (waypoints.isNullOrEmpty()) {
+			waypointsList.getModel()?.value = emptyListData
+		} else {
+			val addition = if (!navigationModel.selectedRouteValid) {
+				"[${L.EVPLANNING_INVALID}]"
+			} else null
+			//5 columns: icon, title, dist, soc, eta
+			waypointsList.getModel()?.value =
+				object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
+					override fun convertRow(index: Int, waypoint: DisplayWaypoint): Array<Any> {
+						val icon = if (waypoint.is_waypoint) iconFlag ?: "" else ""
+						val firstLine = listOfNotNull(
+							waypoint.title ?: L.EVPLANNING_UNKNOWN_LOC,
+							addition,
+						).joinToString(" ")
+						val secondLine = listOfNotNull(
+							waypoint.operator?.let { "[${it}]" },
+							waypoint.num_chargers?.let { if (it > 0) { "$it" } else { null }},
+							waypoint.charger_type?.toUpperCase(Locale.getDefault()),
+							waypoint.trip_dst?.let { formatDistance(it) },
+							waypoint.soc_ariv?.let { "${it}%" },
+							waypoint.final_num_charges?.let { "(${it} Charges)" },
+						).joinToString(" ")
+						val delta_dst = waypoint.delta_dst?.let { "+${formatDistance(it)}" } ?: ""
+						val delta_dur = waypoint.delta_duration?.let { "+${formatTimeDifference(it)}" } ?: "--:--"
+						return arrayOf(
+							icon,
+							"",
+							"${firstLine}\n${secondLine}",
+							"",
+							"${delta_dst}\n${delta_dur}"
+						)
+					}
+				}
+		}
+	}
+
+	fun drawSelectedRoute() {
 		state.getTextModel()?.asRaDataModel()?.value = listOfNotNull(
 			L.EVPLANNING_TITLE_WAYPOINTS,
 			if (navigationModel.isPlanning) {
@@ -251,27 +306,75 @@ class WaypointsListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpe
 				"[${L.EVPLANNING_INVALID}]"
 			} else null
 			//5 columns: icon, title, dist, soc, eta
-			waypointsList.getModel()?.value = object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
-				override fun convertRow(index: Int, waypoint: DisplayWaypoint): Array<Any> {
-					val icon = if (waypoint.is_waypoint) iconFlag ?: "" else ""
-					val firstLine = listOfNotNull(
+			waypointsList.getModel()?.value =
+				object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
+					override fun convertRow(index: Int, waypoint: DisplayWaypoint): Array<Any> {
+						val icon = if (waypoint.is_waypoint) iconFlag ?: "" else ""
+						val firstLine = listOfNotNull(
 							waypoint.title ?: L.EVPLANNING_UNKNOWN_LOC,
 							addition
-					).joinToString(" ")
-					val secondLine = listOfNotNull(
+						).joinToString(" ")
+						val secondLine = listOfNotNull(
 							waypoint.operator?.let { "[${it}]" },
-							waypoint.charger_type,
+							waypoint.num_chargers?.let { if (it > 0) { "${it}" } else { null }},
+							waypoint.charger_type?.toUpperCase(Locale.getDefault()),
 							waypoint.step_dst?.let { formatDistance(it) },
 							waypoint.soc_ariv?.let { "${it}%" },
-					).joinToString(" ")
-					val trip_dst = waypoint.trip_dst?.let { formatDistance(it) } ?: "-"
-					val eta = waypoint.eta?.format(TIME_FMT) ?: "--:--"
-					return arrayOf(icon, "", "${firstLine}\n${secondLine}", "", "${trip_dst}\n${eta}")
+						).joinToString(" ")
+						val trip_dst = waypoint.trip_dst?.let { formatDistance(it) } ?: "-"
+						val eta = waypoint.eta?.format(TIME_FMT) ?: "--:--"
+						return arrayOf(
+							icon,
+							"",
+							"${firstLine}\n${secondLine}",
+							"",
+							"${trip_dst}\n${eta}"
+						)
+					}
 				}
-			}
 		}
 	}
-//	fun redrawSettingsList() {
-//		settingsListView.getModel()?.value = menuSettingsListData
-//	}
+
+	enum class WaypointListActions {
+		SHOW_ALL_WAYPOINTS,
+		PLAN_ALTERNATIVES,
+		SHOW_ALTERNATIVES,
+	}
+
+	val actions = mapOf(
+		WaypointListActions.PLAN_ALTERNATIVES to L.EVPLANNING_ACTION_PLAN_ALTERNATIVES,
+		WaypointListActions.SHOW_ALTERNATIVES to L.EVPLANNING_ACTION_SHOW_ALTERNATIVES,
+		WaypointListActions.SHOW_ALL_WAYPOINTS to L.EVPLANNING_ACTION_SHOW_ALL_WAYPOINTS,
+	)
+
+	var currentActions: List<WaypointListActions>? = null
+
+	fun redrawActionsList() {
+
+		val actionsList = if (navigationModel.isNextChargerMode) {
+			listOf(
+				WaypointListActions.SHOW_ALL_WAYPOINTS,
+				WaypointListActions.PLAN_ALTERNATIVES,
+			)
+		} else {
+			if (navigationModel.nextChargerWaypoints?.isNotEmpty() == true) {
+				listOf(
+					WaypointListActions.SHOW_ALTERNATIVES,
+					WaypointListActions.PLAN_ALTERNATIVES,
+				)
+			} else {
+				listOf(
+					WaypointListActions.PLAN_ALTERNATIVES,
+				)
+			}
+		}
+		this.actionsList.getModel()?.value =
+			object : RHMIListAdapter<WaypointListActions>(3, actionsList) {
+				override fun convertRow(index: Int, item: WaypointListActions): Array<Any> {
+					return arrayOf("", "", actions[item] ?: "")
+				}
+			}
+
+		currentActions = actionsList
+	}
 }

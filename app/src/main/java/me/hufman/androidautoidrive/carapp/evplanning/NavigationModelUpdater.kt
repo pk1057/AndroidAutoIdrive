@@ -37,14 +37,21 @@ class NavigationModelUpdater() {
 	var threadCarApp: CarThread? = null
 	var navigationModelController: NavigationModelController? = null
 	var existingPlan: Plan? = null
+	var nextChargerPlan: Plan? = null
 
 	val routingDataListener = object : RoutingDataListener {
 		override fun onRoutingDataChanged(routingData: RoutingData) {
 			//TODO: for debugging only, remove later:
 			EVPlanningDataViewModel.setRoutingData(routingData)
 
-			val displayRoutes = existingPlan?.routes?.let { parseRoutingData(it, routingData) }
+			val waypoints = nextChargerPlan?.routes?.let {
+				parseRoutingData(it, routingData)
+			}?.let { extractNextChargerWaypoints(it) }
+			threadCarApp?.post {
+				navigationModelController?.setNextChargerWaypoints(waypoints)
+			}
 
+			val displayRoutes = existingPlan?.routes?.let { parseRoutingData(it, routingData) }
 			threadCarApp?.post {
 				navigationModelController?.setDisplayRoutes(displayRoutes)
 			}
@@ -52,8 +59,16 @@ class NavigationModelUpdater() {
 
 		override fun onPlanChanged(plan: Plan?) {
 			existingPlan = plan
+			nextChargerPlan = null
 			threadCarApp?.post {
-				navigationModelController?.invalidateAll()
+				navigationModelController?.planningFinished()
+			}
+		}
+
+		override fun onNextChargerPlanChanged(plan: Plan?) {
+			nextChargerPlan = plan
+			threadCarApp?.post {
+				navigationModelController?.nextChargerFinished()
 			}
 		}
 
@@ -79,13 +94,59 @@ class NavigationModelUpdater() {
 		val NAME_MATCHER = Regex("^(.*[^\\s])\\s*\\[([^\\[]*)\\]\$")
 
 		class Acc(
-				var previous: Step? = null,
-				val displayWaypoints: MutableList<DisplayWaypoint> = mutableListOf(),
-				var arrival_duration: Int? = null,
-				var num_charges: Int = 0,
-				var charge_duration: Int = 0,
-				var trip_dst: Int? = null,
+			var previous: Step? = null,
+			val displayWaypoints: MutableList<DisplayWaypoint> = mutableListOf(),
+			var arrival_duration: Int? = null,
+			var num_charges: Int = 0,
+			var charge_duration: Int = 0,
+			var trip_dst: Int? = null,
 		)
+
+		fun extractNextChargerWaypoints(displayRoutes: List<DisplayRoute>): List<DisplayWaypoint> {
+			val min_duration = displayRoutes.map { it.arrival_duration }.filterNotNull().minOrNull()
+			val min_distance = displayRoutes.map { it.trip_dst }.filterNotNull().minOrNull()
+			return displayRoutes.map { displayRoute ->
+				displayRoute.displayWaypoints?.firstOrNull()?.let {
+					if (it.is_initial_charger) {
+						displayRoute.displayWaypoints.getOrNull(1)
+					} else {
+						it
+					}
+				}?.let {
+					DisplayWaypoint(
+						icon = it.icon,
+						title = it.title,
+						operator = it.operator,
+						charger_type = it.charger_type,
+						is_waypoint = it.is_waypoint,
+						is_initial_charger = it.is_initial_charger,
+						address = it.address,
+						trip_dst = it.trip_dst,
+						step_dst = it.step_dst,
+						soc_ariv = it.soc_ariv,
+						soc_dep = it.soc_dep,
+						eta = it.eta,
+						etd = it.etd,
+						duration = it.duration,
+						num_chargers = it.num_chargers,
+						free_chargers = it.free_chargers,
+						delta_duration = min_duration?.let { min_dur ->
+							displayRoute.arrival_duration?.minus(
+								min_dur
+							)
+						},
+						delta_dst = min_distance?.let { min_dst ->
+							displayRoute.trip_dst?.minus(
+								min_dst
+							)
+						},
+						final_num_charges = displayRoute.num_charges,
+						lat = it.lat,
+						lon = it.lon,
+					)
+				}
+			}.filterNotNull()
+		}
 
 		fun parseRoutingData(routes: List<Route>, routingData: RoutingData): List<DisplayRoute>? {
 
@@ -99,21 +160,23 @@ class NavigationModelUpdater() {
 					route.steps?.filterIndexed { index, step ->
 						index >= routeDistance.stepIndex
 					}?.let { steps ->
-						accumulateDisplayData(steps,
-								routeDistance.pathStepIndex,
-								routingData.existingWaypointIndices?.getOrNull(routeDistance.routeIndex)?.map { it-routeDistance.stepIndex },
-								start_time,
-								start_dist,
-								LocalDateTime.now()
+						accumulateDisplayData(
+							steps,
+							routeDistance.pathStepIndex,
+							routingData.existingWaypointIndices?.getOrNull(routeDistance.routeIndex)
+								?.map { it - routeDistance.stepIndex },
+							start_time,
+							start_dist,
+							LocalDateTime.now()
 						)?.let {
 							DisplayRoute(
-									trip_dst = it.trip_dst,
-									arrival_duration = it.arrival_duration,
-									num_charges = it.num_charges,
-									charge_duration = it.charge_duration,
-									deviation = routeDistance.distance.toInt(),
-									contains_waypoint = it.displayWaypoints.filter { waypoint -> waypoint.is_waypoint }.size > 1,
-									displayWaypoints = it.displayWaypoints
+								trip_dst = it.trip_dst,
+								arrival_duration = it.arrival_duration,
+								num_charges = it.num_charges,
+								charge_duration = it.charge_duration,
+								deviation = routeDistance.distance.toInt(),
+								contains_waypoint = it.displayWaypoints.filter { waypoint -> waypoint.is_waypoint }.size > 1,
+								displayWaypoints = it.displayWaypoints
 							)
 						}
 					}
@@ -121,18 +184,28 @@ class NavigationModelUpdater() {
 			}?.filterNotNull()
 		}
 
-		private fun deriveStartDistanceTime(routeDistance: RoutingService.RouteDistance, route: Route) =
-				routeDistance.pathStepIndex?.let {
-					route.steps?.getOrNull(routeDistance.stepIndex)?.path?.getOrNull(it)
-				}?.let {
-					Pair(it.remaining_dist?.times(1000)?.toInt(), it.remaining_time)
-				} ?: route.steps?.getOrNull(routeDistance.stepIndex)?.let {
-					Pair(it.departure_dist, it.departure_duration)
-				} ?: route.steps?.firstOrNull()?.let {
-					Pair(it.departure_dist, it.departure_duration)
-				} ?: Pair(null, null)
+		private fun deriveStartDistanceTime(
+			routeDistance: RoutingService.RouteDistance,
+			route: Route
+		) =
+			routeDistance.pathStepIndex?.let {
+				route.steps?.getOrNull(routeDistance.stepIndex)?.path?.getOrNull(it)
+			}?.let {
+				Pair(it.remaining_dist?.times(1000)?.toInt(), it.remaining_time)
+			} ?: route.steps?.getOrNull(routeDistance.stepIndex)?.let {
+				Pair(it.departure_dist, it.departure_duration)
+			} ?: route.steps?.firstOrNull()?.let {
+				Pair(it.departure_dist, it.departure_duration)
+			} ?: Pair(null, null)
 
-		private fun accumulateDisplayData(steps: Iterable<Step>, pathStepIndex: Int?, wayPointIndices: List<Int>?, start_time: Int?, start_dist: Int?, now: LocalDateTime): Acc? {
+		private fun accumulateDisplayData(
+			steps: Iterable<Step>,
+			pathStepIndex: Int?,
+			wayPointIndices: List<Int>?,
+			start_time: Int?,
+			start_dist: Int?,
+			now: LocalDateTime
+		): Acc? {
 			return steps.foldIndexed(Acc(), { index, acc, step ->
 				// include starting-point only if it's a charger and it is very close:
 				if (index > 0 || step.is_charger == true && (pathStepIndex == null || pathStepIndex < 2)) {
@@ -155,35 +228,56 @@ class NavigationModelUpdater() {
 						step.charge_duration?.let { acc.charge_duration += it }
 					}
 
+					val (numChargers, freeChargers) = step.charger_type?.let {
+						if (it.equals("0")) null else it
+					}?.let { chargerType ->
+						step.charger?.outlets?.filter {
+							chargerType.equals(it.type)
+						}?.let {
+							Pair(it.size,it.count { "OPERATIONAL".equals(it.status) })
+						}
+					} ?: Pair(Int.MIN_VALUE,Int.MIN_VALUE)
+
 					acc.displayWaypoints.add(DisplayWaypoint(
-							title = nameParts?.getOrNull(1)?.takeIf { it.isNotEmpty() }
-									?: step.name?.takeIf { it.isNotEmpty() },
-							operator = step.charger?.network_name
-									?: operator?.takeIf { it.isNotEmpty() },
-							charger_type = step.charger_type?.let { if (it.equals("0")) null else it.toUpperCase(Locale.getDefault()) },
-							is_waypoint = wayPointIndices?.contains(index) == true,
-							address = step.charger?.address
-									?: String.format("%.5f %.5f", step.lat, step.lon),
-							trip_dst = acc.trip_dst,
-							step_dst = when (index) {
-								0 -> step.departure_dist?.let { start_dist?.minus(it) }
-								1 -> step.arrival_dist?.let { start_dist?.minus(it) }
-								else -> step.arrival_dist?.let { acc.previous?.departure_dist?.minus(it) }
-										?: acc.previous?.drive_dist
-							},
-							soc_ariv = step.arrival_perc,
-							soc_dep = if (step.is_charger == true) {
-								step.departure_perc
-							} else null,
-							eta = eta,
-							etd = if (step.is_charger == true) {
-								step.charge_duration?.let { eta?.plusSeconds(it.toLong()) }
-							} else null,
-							duration = if (step.is_charger == true) {
-								step.charge_duration?.div(60)
-							} else null,
-							lat = step.lat,
-							lon = step.lon,
+						title = nameParts?.getOrNull(1)?.takeIf { it.isNotEmpty() }
+							?: step.name?.takeIf { it.isNotEmpty() },
+						operator = step.charger?.network_name
+							?: operator?.takeIf { it.isNotEmpty() },
+						charger_type = step.charger_type?.let {
+							if (it.equals("0")) null else it.toUpperCase(
+								Locale.getDefault()
+							)
+						},
+						is_waypoint = wayPointIndices?.contains(index) == true,
+						is_initial_charger = (index == 0),
+						address = step.charger?.address
+							?: String.format("%.5f %.5f", step.lat, step.lon),
+						trip_dst = acc.trip_dst,
+						step_dst = when (index) {
+							0 -> step.departure_dist?.let { start_dist?.minus(it) }
+							1 -> step.arrival_dist?.let { start_dist?.minus(it) }
+							else -> step.arrival_dist?.let {
+								acc.previous?.departure_dist?.minus(
+									it
+								)
+							}
+								?: acc.previous?.drive_dist
+						},
+						soc_ariv = step.arrival_perc,
+						soc_dep = if (step.is_charger == true) {
+							step.departure_perc
+						} else null,
+						eta = eta,
+						etd = if (step.is_charger == true) {
+							step.charge_duration?.let { eta?.plusSeconds(it.toLong()) }
+						} else null,
+						duration = if (step.is_charger == true) {
+							step.charge_duration?.div(60)
+						} else null,
+						num_chargers = numChargers,
+						free_chargers = freeChargers,
+						lat = step.lat,
+						lon = step.lon,
 					))
 				}
 				acc.previous = step
@@ -211,6 +305,16 @@ class NavigationModelUpdater() {
 			val hours = seconds.div(3600).toString()
 			val minutes = String.format("%02d", seconds.rem(3600).div(60))
 			return "${hours}:${minutes}"
+		}
+
+		fun formatTimeDifference(seconds: Int): String {
+			val hours = seconds.div(3600)
+			val minutes = seconds.rem(3600).div(60)
+			return if (hours > 0) {
+				"${hours}:${String.format("%02d", minutes)}h"
+			} else {
+				"${minutes}min"
+			}
 		}
 	}
 }
