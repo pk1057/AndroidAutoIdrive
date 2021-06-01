@@ -44,6 +44,7 @@ interface RoutingDataListener {
 	fun onPlanChanged(plan: Plan?)
 	fun onNextChargerPlanChanged(plan: Plan?)
 	fun onPlanningTriggered()
+	fun onPlanningError(msg: String)
 }
 
 class RoutingService(
@@ -210,6 +211,9 @@ class RoutingService(
 	private var error: String? = null
 		set(value) {
 			field = value
+			if (value != null) {
+				routingDataListener.onPlanningError(value)
+			}
 			EVPlanningDataViewModel.setError(value ?: "no error")
 		}
 

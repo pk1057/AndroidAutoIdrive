@@ -83,8 +83,8 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 	var deferredUpdate: DeferredUpdate? = null  // wrapper object to help debounce user inputs
 	var lastInteractionIndex: Int = -1       // what index the user last selected
 
-	val emptyListData = RHMIModel.RaListModel.RHMIListConcrete(5).apply {
-		addRow(arrayOf("", L.EVPLANNING_EMPTY_LIST, "", "", ""))
+	val emptyListData = RHMIModel.RaListModel.RHMIListConcrete(3).apply {
+		addRow(arrayOf("", L.EVPLANNING_EMPTY_LIST, "",))
 	}
 
 	val iconFlag: ByteArray?
@@ -275,32 +275,40 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 			L.EVPLANNING_TITLE_ROUTES,
 			if (navigationModel.isPlanning) {
 				"[${L.EVPLANNING_REPLANNING}...]"
+			} else if (navigationModel.isError) {
+				"[${L.EVPLANNING_ERROR}]"
 			} else null,
 		).joinToString(" ")
 
-		val routes = navigationModel.displayRoutes
-		if (routes.isNullOrEmpty()) {
-			routesList.getModel()?.value = emptyListData
+		routesList.getModel()?.value = if (navigationModel.isError) {
+			RHMIModel.RaListModel.RHMIListConcrete(3).apply {
+				addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "",))
+			}
 		} else {
-			//5 columns: icon, title, dist, soc, eta
-			routesList.getModel()?.value = object : RHMIListAdapter<DisplayRoute>(3, routes) {
-				override fun convertRow(index: Int, route: DisplayRoute): Array<Any> {
-					val icon = if (route.contains_waypoint) iconFlag ?: "" else ""
-					val addition = if (!navigationModel.displayRoutesValid) {
-						"[${L.EVPLANNING_INVALID}]"
-					} else if (route.deviation != null && route.deviation > 50) {
-						"${L.EVPLANNING_OFFSET}: ${formatDistanceDetailed(route.deviation)}"
-					} else null
-					val firstLine =	listOfNotNull(
+			val routes = navigationModel.displayRoutes
+			if (routes.isNullOrEmpty()) {
+				emptyListData
+			} else {
+				//5 columns: icon, title, dist, soc, eta
+				object : RHMIListAdapter<DisplayRoute>(3, routes) {
+					override fun convertRow(index: Int, route: DisplayRoute): Array<Any> {
+						val icon = if (route.contains_waypoint) iconFlag ?: "" else ""
+						val addition = if (!navigationModel.displayRoutesValid) {
+							"[${L.EVPLANNING_INVALID}]"
+						} else if (route.deviation != null && route.deviation > 50) {
+							"${L.EVPLANNING_OFFSET}: ${formatDistanceDetailed(route.deviation)}"
+						} else null
+						val firstLine = listOfNotNull(
 							route.trip_dst?.let { formatDistance(it) },
 							route.arrival_duration?.let { "(${formatTime(it)}h)" },
 							addition,
-					).joinToString(" ")
-					val secondLine = listOfNotNull(
+						).joinToString(" ")
+						val secondLine = listOfNotNull(
 							route.num_charges?.let { "${it} charges" },
 							route.charge_duration?.let { "(${formatTime(it)}h)" },
-					).joinToString(" ")
-					return arrayOf(icon, "", "${firstLine}\n${secondLine}")
+						).joinToString(" ")
+						return arrayOf(icon, "", "${firstLine}\n${secondLine}")
+					}
 				}
 			}
 		}

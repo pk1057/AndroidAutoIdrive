@@ -77,6 +77,12 @@ class NavigationModelUpdater() {
 				navigationModelController?.planningTriggered()
 			}
 		}
+
+		override fun onPlanningError(msg: String) {
+			threadCarApp?.post {
+				navigationModelController?.planningError(msg)
+			}
+		}
 	}
 
 	fun onCreateCarApp(threadCarApp: CarThread?) {

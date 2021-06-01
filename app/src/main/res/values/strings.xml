@@ -396,7 +396,10 @@
     <string name="EVPLANNING_TITLE_ROUTES">EVPlanning - Routes</string>
     <string name="EVPLANNING_TITLE_WAYPOINTS">EVPlanning - Waypoints</string>
     <string name="EVPLANNING_TITLE_ALTERNATIVES">EVPlanning - Alternatives</string>
+    <string name="EVPLANNING_TITLE_WAYPOINT">EVPlanning - Details</string>
+
     <string name="EVPLANNING_REPLANNING">Planning in Progress</string>
+    <string name="EVPLANNING_ERROR">Planning Error</string>
 
     <string name="EVPLANNING_ACTION_PLAN">Trigger new Planning</string>
     <string name="EVPLANNING_ACTION_PLAN_ALTERNATIVES">Trigger Planning of Next Charger Alternatives</string>

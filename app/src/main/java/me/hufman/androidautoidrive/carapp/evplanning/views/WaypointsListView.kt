@@ -183,7 +183,7 @@ class WaypointsListView(
 			setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*")
 			getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionListCallback { index ->
 				currentActions?.getOrNull(index)?.let {
-					when(it) {
+					when (it) {
 						WaypointListActions.PLAN_ALTERNATIVES -> onActionPlanAlternativesClicked?.invoke()
 						WaypointListActions.SHOW_ALTERNATIVES -> onActionShowAlternativesClicked?.invoke()
 						WaypointListActions.SHOW_ALL_WAYPOINTS -> onActionShowAllWaypointsClicked?.invoke()
@@ -249,18 +249,24 @@ class WaypointsListView(
 			L.EVPLANNING_TITLE_ALTERNATIVES,
 			if (navigationModel.isPlanning) {
 				"[${L.EVPLANNING_REPLANNING}...]"
+			} else if (navigationModel.isError) {
+				"[${L.EVPLANNING_ERROR}]"
 			} else null,
 		).joinToString(" ")
 
-		val waypoints = navigationModel.nextChargerWaypoints
-		if (waypoints.isNullOrEmpty()) {
-			waypointsList.getModel()?.value = emptyListData
+		waypointsList.getModel()?.value = if (navigationModel.isError) {
+			RHMIModel.RaListModel.RHMIListConcrete(5).apply {
+				addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "", "", ""))
+			}
 		} else {
-			val addition = if (!navigationModel.selectedRouteValid) {
-				"[${L.EVPLANNING_INVALID}]"
-			} else null
-			//5 columns: icon, title, dist, soc, eta
-			waypointsList.getModel()?.value =
+			val waypoints = navigationModel.nextChargerWaypoints
+			if (waypoints.isNullOrEmpty()) {
+				emptyListData
+			} else {
+				val addition = if (!navigationModel.selectedRouteValid) {
+					"[${L.EVPLANNING_INVALID}]"
+				} else null
+				//5 columns: icon, title, dist, soc, eta
 				object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
 					override fun convertRow(index: Int, waypoint: DisplayWaypoint): Array<Any> {
 						val icon = if (waypoint.is_waypoint) iconFlag ?: "" else ""
@@ -270,14 +276,23 @@ class WaypointsListView(
 						).joinToString(" ")
 						val secondLine = listOfNotNull(
 							waypoint.operator?.let { "[${it}]" },
-							waypoint.num_chargers?.let { if (it > 0) { "$it" } else { null }},
+							waypoint.num_chargers?.let {
+								if (it > 0) {
+									"$it"
+								} else {
+									null
+								}
+							},
 							waypoint.charger_type?.toUpperCase(Locale.getDefault()),
 							waypoint.trip_dst?.let { formatDistance(it) },
 							waypoint.soc_ariv?.let { "${it}%" },
 							waypoint.final_num_charges?.let { "(${it} Charges)" },
 						).joinToString(" ")
-						val delta_dst = waypoint.delta_dst?.let { "+${formatDistance(it)}" } ?: ""
-						val delta_dur = waypoint.delta_duration?.let { "+${formatTimeDifference(it)}" } ?: "--:--"
+						val delta_dst =
+							waypoint.delta_dst?.let { "+${formatDistance(it)}" } ?: ""
+						val delta_dur =
+							waypoint.delta_duration?.let { "+${formatTimeDifference(it)}" }
+								?: "--:--"
 						return arrayOf(
 							icon,
 							"",
@@ -287,6 +302,7 @@ class WaypointsListView(
 						)
 					}
 				}
+			}
 		}
 	}
 
@@ -295,18 +311,24 @@ class WaypointsListView(
 			L.EVPLANNING_TITLE_WAYPOINTS,
 			if (navigationModel.isPlanning) {
 				"[${L.EVPLANNING_REPLANNING}...]"
+			} else if (navigationModel.isError) {
+				"[${L.EVPLANNING_ERROR}]"
 			} else null,
 		).joinToString(" ")
 
-		val waypoints = navigationModel.selectedRoute
-		if (waypoints.isNullOrEmpty()) {
-			waypointsList.getModel()?.value = emptyListData
+		waypointsList.getModel()?.value = if (navigationModel.isError) {
+			RHMIModel.RaListModel.RHMIListConcrete(5).apply {
+				addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "", "", ""))
+			}
 		} else {
-			val addition = if (!navigationModel.selectedRouteValid) {
-				"[${L.EVPLANNING_INVALID}]"
-			} else null
-			//5 columns: icon, title, dist, soc, eta
-			waypointsList.getModel()?.value =
+			val waypoints = navigationModel.selectedRoute
+			if (waypoints.isNullOrEmpty()) {
+				emptyListData
+			} else {
+				val addition = if (!navigationModel.selectedRouteValid) {
+					"[${L.EVPLANNING_INVALID}]"
+				} else null
+				//5 columns: icon, title, dist, soc, eta
 				object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
 					override fun convertRow(index: Int, waypoint: DisplayWaypoint): Array<Any> {
 						val icon = if (waypoint.is_waypoint) iconFlag ?: "" else ""
@@ -316,7 +338,13 @@ class WaypointsListView(
 						).joinToString(" ")
 						val secondLine = listOfNotNull(
 							waypoint.operator?.let { "[${it}]" },
-							waypoint.num_chargers?.let { if (it > 0) { "${it}" } else { null }},
+							waypoint.num_chargers?.let {
+								if (it > 0) {
+									"${it}"
+								} else {
+									null
+								}
+							},
 							waypoint.charger_type?.toUpperCase(Locale.getDefault()),
 							waypoint.step_dst?.let { formatDistance(it) },
 							waypoint.soc_ariv?.let { "${it}%" },
@@ -332,6 +360,7 @@ class WaypointsListView(
 						)
 					}
 				}
+			}
 		}
 	}
 

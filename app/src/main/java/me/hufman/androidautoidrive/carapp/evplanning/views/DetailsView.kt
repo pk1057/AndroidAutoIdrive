@@ -50,7 +50,7 @@ class DetailsView(
 
 	var listState: RHMIState =
 		state        // where to set the focus when the active notification disappears, linked during initWidgets
-	val titleWidget: RHMIComponent.List     // the widget to display the notification app's icon
+	val nameWidget: RHMIComponent.List     // the widget to display the charging-points name and operator's icon
 	val addressWidget: RHMIComponent.List    // the widget to display the title in
 	val descriptionWidget: RHMIComponent.List     // the widget to display the text
 	val imageWidget: RHMIComponent.Image
@@ -61,7 +61,7 @@ class DetailsView(
 	var onAddressClicked: (() -> Unit)? = null
 
 	init {
-		titleWidget = state.componentsList.filterIsInstance<RHMIComponent.List>().first()
+		nameWidget = state.componentsList.filterIsInstance<RHMIComponent.List>().first()
 		addressWidget = state.componentsList.filterIsInstance<RHMIComponent.List>()[1]
 		descriptionWidget = state.componentsList.filterIsInstance<RHMIComponent.List>().first {
 			RHMIModelType.of(it.getModel()?.modelType) == RHMIModelType.RICHTEXT
@@ -96,8 +96,8 @@ class DetailsView(
 		// separator below the title
 		state.componentsList.filterIsInstance<RHMIComponent.Separator>()
 			.forEach { it.setVisible(true) }
-		titleWidget.apply {
-			// app icon and notification title
+		nameWidget.apply {
+			// operator's icon and charging-stops name
 			setVisible(true)
 			setEnabled(true)
 			setSelectable(true)
@@ -131,7 +131,7 @@ class DetailsView(
 
 	fun hide() {
 		val emptyList = RHMIModel.RaListModel.RHMIListConcrete(1)
-		titleWidget.getModel()?.setValue(emptyList, 0, 0, 0)
+		nameWidget.getModel()?.setValue(emptyList, 0, 0, 0)
 		addressWidget.getModel()?.setValue(emptyList, 0, 0, 0)
 		descriptionWidget.getModel()?.setValue(emptyList, 0, 0, 0)
 		imageWidget.setVisible(false)
@@ -169,16 +169,23 @@ class DetailsView(
 		val icon = display.icon?.let { graphicsHelpers.compress(it, 48, 48) } ?: ""
 
 		val title = listOfNotNull(
-			display.title ?: L.EVPLANNING_UNKNOWN_LOC,
+			L.EVPLANNING_TITLE_WAYPOINT,
 			if (navigationModel.isPlanning) {
 				"[${L.EVPLANNING_REPLANNING}...]"
+			} else if (navigationModel.isError) {
+				"[${L.EVPLANNING_ERROR}]"
 			} else null,
+		).joinToString(" ")
+
+		val name = listOfNotNull(
+			display.title ?: L.EVPLANNING_UNKNOWN_LOC,
 			if (!navigationModel.selectedWaypointValid) {
 				"[${L.EVPLANNING_INVALID}]"
 			} else null,
-		).joinToString(" ")
-		val titleListData = RHMIModel.RaListModel.RHMIListConcrete(3)
-		titleListData.addRow(arrayOf(icon, "", title))
+			)
+
+		val nameListData = RHMIModel.RaListModel.RHMIListConcrete(3)
+		nameListData.addRow(arrayOf(icon, "", name))
 
 		// prepare the title data
 		var sidePictureWidth = 0
@@ -242,7 +249,7 @@ class DetailsView(
 		descriptionListData.addRow(arrayOf(text))
 
 		state.getTextModel()?.asRaDataModel()?.value = title
-		titleWidget.getModel()?.value = titleListData
+		nameWidget.getModel()?.value = nameListData
 		addressWidget.getModel()?.value = addressListData
 		descriptionWidget.getModel()?.value = descriptionListData
 
