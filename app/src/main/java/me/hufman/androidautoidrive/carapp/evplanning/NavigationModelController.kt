@@ -28,7 +28,10 @@ import java.util.*
 class NavigationModel {
 
 	var isPlanning: Boolean = false
+	var isError: Boolean = false
 	var isNextChargerMode: Boolean = false
+
+	var errorMessage: String? = null
 
 	var displayRoutesValid: Boolean = false
 	var selectedRouteValid: Boolean = false
@@ -155,6 +158,7 @@ class NavigationModelController(val context: Context) {
 	fun planningFinished() {
 		navigationModel.apply {
 			isPlanning = false
+			isError = false
 			displayRoutesValid = false
 			selectedRouteValid = false
 			selectedWaypointValid = false
@@ -170,6 +174,7 @@ class NavigationModelController(val context: Context) {
 	fun nextChargerFinished() {
 		navigationModel.apply {
 			isPlanning = false
+			isError = false
 			selectedWaypointIndex = null
 			selectedWaypointValid = false
 			routesListObserver?.invoke()
@@ -181,6 +186,17 @@ class NavigationModelController(val context: Context) {
 	fun planningTriggered() {
 		navigationModel.apply {
 			isPlanning = true
+			routesListObserver?.invoke()
+			waypointListObserver?.invoke()
+			selectedWaypointObserver?.invoke()
+		}
+	}
+
+	fun planningError(msg: String) {
+		navigationModel.apply {
+			isPlanning = false
+			isError = true
+			errorMessage = msg
 			routesListObserver?.invoke()
 			waypointListObserver?.invoke()
 			selectedWaypointObserver?.invoke()

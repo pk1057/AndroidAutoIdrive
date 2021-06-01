@@ -58,12 +58,30 @@ class PlanningImpl(baseUrl: String, private val authorization: String) : Plannin
                 if (response.isSuccessful && body != null) {
                     onSuccess(body)
                 } else {
-                    onError(response.errorBody()?.string() ?: response.message())
+                    response.errorBody()?.string()?.let {
+                        if (it.isNotEmpty()) {
+                            onError(it)
+                            return
+                        }
+                    }
+                    response.message()?.let {
+                        if (it.isNotEmpty()) {
+                            onError(it)
+                            return
+                        }
+                    }
+                    onError(L.EVPLANNING_ERROR)
                 }
             }
 
             override fun onFailure(call: Call<R>, t: Throwable) {
-                onError(t.localizedMessage)
+                t.localizedMessage?.let {
+                    if (it.isNotEmpty()) {
+                        onError(it)
+                        return
+                    }
+                }
+                onError(L.EVPLANNING_ERROR)
             }
         })
     }
