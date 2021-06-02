@@ -100,10 +100,10 @@ class RoutingService(
 
 		if (isDriveModeEnabled()) {
 			maxSpeed = when (carData.drivingMode) {
-				DRIVING_MODE_COMFORT -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT)
-				DRIVING_MODE_ECO_PRO -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO)
-				DRIVING_MODE_ECO_PRO_PLUS -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS)
-				DRIVING_MODE_SPORT -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_SPORT)
+				DrivingMode.COMFORT.raw -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT)
+				DrivingMode.ECOPRO.raw -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO)
+				DrivingMode.ECOPRO_PLUS.raw -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS)
+				DrivingMode.SPORT.raw -> getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED_SPORT)
 				else -> null
 			}
 		}
@@ -353,12 +353,18 @@ class RoutingService(
 		}
 	}
 
-	companion object {
+	enum class DrivingMode(val raw: Int) {
+		COMFORT(2),
+		COMFORT_PLUS(9),
+		BASIC(3),
+		SPORT(4),
+		SPORT_PLUS(5),
+		RACE(6),
+		ECOPRO(7),
+		ECOPRO_PLUS(8),
+	}
 
-		const val DRIVING_MODE_ECO_PRO = 7
-		const val DRIVING_MODE_ECO_PRO_PLUS = 8
-		const val DRIVING_MODE_COMFORT = 3
-		const val DRIVING_MODE_SPORT = -1 //TODO value of sport-mode unknown
+	companion object {
 
 		const val MAX_WAYPOINT_DISTANCE = 50.0
 
