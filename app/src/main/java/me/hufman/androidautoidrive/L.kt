@@ -100,6 +100,8 @@ object L {
 	var EVPLANNING_MAX_SPEED = "Maximum speed"
 	var EVPLANNING_MAX_SPEED_DRIVEMODE_ENABLE = "Use Driving-mode for Maximum-speed"
 	var EVPLANNING_REFERENCE_CONSUMPTION = "Reference Consumption"
+	var EVPLANNING_MIN_SOC_CHARGER = "Minimum SOC at Charger"
+	var EVPLANNING_MIN_SOC_FINAL = "Minimum SOC at Destination"
 
 	fun loadResources(context: Context, locale: Locale? = null) {
 		val thisContext = if (locale == null) { context } else {

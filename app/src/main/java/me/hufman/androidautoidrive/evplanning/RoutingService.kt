@@ -29,15 +29,45 @@ import me.hufman.androidautoidrive.evplanning.util.CheapRuler
 import me.hufman.androidautoidrive.evplanning.util.Point
 import me.hufman.androidautoidrive.evplanning.util.Units
 import me.hufman.androidautoidrive.carapp.evplanning.Position
-import me.hufman.androidautoidrive.evplanning.RoutingService.RouteDistance.Companion.fromStepSegment
 import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningDataViewModel
 import kotlin.math.sqrt
 
 data class RoutingData(
 	val carData: CarData,
-	val routeDistances: List<RoutingService.RouteDistance>?,
-	val existingWaypointIndices: List<List<Int>?>?
+	val routeData: List<RouteData>?
 )
+
+data class RouteData(
+		val routeIndex: Int,
+		val stepIndex: Int? = null,
+		val pathStepIndex: Int? = null,
+		val distance: Double? = null,
+		val arrival_soc: Double? = null,
+		val existingWaypointIndices: List<Int>
+) {
+	companion object {
+		fun of(position: Position, soc: Double, destinations: List<Position>, routes: List<Route>): List<RouteData> {
+			val positionRuler = RoutingService.PositionRuler.of(position)
+			val destinationsRuler = destinations.map { RoutingService.PositionRuler.of(it) }.filterNotNull()
+
+			return routes.mapIndexed { routeIndex, route ->
+				(positionRuler?.let { ruler ->
+					RoutingService.closestPathStepTriple(ruler, route) // stepIndex, pathStepIndex, distance
+							?: RoutingService.closestStepSegmentPair(ruler, route)?.let { Triple(it.first,null,it.second) }
+				} ?: Triple(null,null,null)).let {
+					RouteData(
+						routeIndex = routeIndex,
+						stepIndex = it.first,
+						pathStepIndex = it.second,
+						distance = it.third,
+						arrival_soc = null,
+						existingWaypointIndices = RoutingService.getMatchingIndices(destinationsRuler, route, RoutingService.MAX_WAYPOINT_SQUARE_DISTANCE),
+					)
+				}
+			}
+		}
+	}
+}
 
 interface RoutingDataListener {
 	fun onRoutingDataChanged(routingData: RoutingData)
@@ -48,8 +78,8 @@ interface RoutingDataListener {
 }
 
 class RoutingService(
-	private val planning: Planning,
-	private val routingDataListener: RoutingDataListener
+		private val planning: Planning,
+		private val routingDataListener: RoutingDataListener
 ) {
 
 	var handler: Handler? = null
@@ -66,6 +96,20 @@ class RoutingService(
 		}
 
 	private var referenceConsumption: Int? = null
+		set(value) {
+			if (isChangedForReplan(field, value)) {
+				field = value
+			}
+		}
+
+	private var minSocCharger: Double? = null
+		set(value) {
+			if (isChangedForReplan(field, value)) {
+				field = value
+			}
+		}
+
+	private var minSocDestination: Double? = null
 		set(value) {
 			if (isChangedForReplan(field, value)) {
 				field = value
@@ -109,15 +153,14 @@ class RoutingService(
 		}
 
 		val previousDestinations = setOf(
-			previous.nextDestination,
-			previous.finalDestination,
+				previous.nextDestination,
+				previous.finalDestination,
 		).filter { it.isValid() }
 		val newDestinations = setOf(
-			carData.nextDestination,
-			carData.finalDestination,
+				carData.nextDestination,
+				carData.finalDestination,
 		).filter { it.isValid() }
 
-		var existingWaypointIndices: List<List<Int>>? = null
 		val routes = planResult?.result?.routes
 
 		if (newDestinations.isEmpty()) {
@@ -131,23 +174,23 @@ class RoutingService(
 			} else if (newDestinations.last() != previousDestinations.lastOrNull()) {
 				// final destination has changed:
 				shouldReplan = true
-			} else {
-				// final destination is unchanged and next destination exists:
-				existingWaypointIndices =
-					getExistingWaypointIndices(newDestinations, routes, MAX_WAYPOINT_DISTANCE)
-				if (existingWaypointIndices.isEmpty()) {
-					// next destination does not belong to an existing route
-					shouldReplan = true
-				}
 			}
 		}
+
 		routingDataListener.onRoutingDataChanged(
 			RoutingData(
-				carData = carData, //TODO: carData will most likely be obsolete, currently used for debugging only
-				routeDistances = calcRouteDistances(carData.position, routes),
-				existingWaypointIndices,
+				carData,
+				routes?.let {
+					RouteData.of(carData.position,carData.soc,newDestinations,it).let { routeData ->
+						// none of the new destinations matches an existing routepoint:
+						shouldReplan = shouldReplan || routeData.all { it.existingWaypointIndices.isEmpty() }
+						routeData
+					}
+				}
 			)
 		)
+
+
 		if (shouldReplan && isReplanEnabled()) {
 			planNew()
 		}
@@ -175,7 +218,7 @@ class RoutingService(
 	fun isReplanEnabled() = getAppSettingBoolean(AppSettings.KEYS.EVPLANNING_AUTO_REPLAN)
 
 	fun isDriveModeEnabled() =
-		getAppSettingBoolean(AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE)
+			getAppSettingBoolean(AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE)
 
 	private fun getAppSettingBoolean(setting: AppSettings.KEYS): Boolean {
 		return appSettings?.get(setting)?.toBoolean() == true
@@ -202,6 +245,8 @@ class RoutingService(
 			maxSpeed = getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MAXSPEED)
 		}
 		referenceConsumption = getAppSettingInt(AppSettings.KEYS.EVPLANNING_REFERENCE_CONSUMPTION)
+		minSocCharger = getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MIN_SOC_CHARGER)
+		minSocDestination = getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MIN_SOC_FINAL)
 
 		if (shouldReplan && isReplanEnabled()) {
 			planNew()
@@ -230,77 +275,79 @@ class RoutingService(
 		}
 
 	private fun triggerPlanning(
-		find_alts: Boolean? = null,
-		find_next_charger_alts: Boolean? = null,
-		plan_uuid: String? = null
+			find_alts: Boolean? = null,
+			find_next_charger_alts: Boolean? = null,
+			plan_uuid: String? = null
 	) {
 		//TODO remove, only for debugging:
 		EVPlanningDataViewModel.setMaxSpeed(maxSpeed)
 		setOf(
-			carData.position,
-			carData.nextDestination,
-			carData.finalDestination
+				carData.position,
+				carData.nextDestination,
+				carData.finalDestination
 		).filter { it.isValid() }
-			.takeIf { it.size > 1 }
-			?.mapIndexed { index, it ->
-				Destination(
-					it.latitude,
-					it.longitude,
-					is_my_pos = if (index == 0) true else null
-				)
-			}
-			?.let { destinations ->
-				routingInProgress = true
-				routingDataListener.onPlanningTriggered()
-				shouldReplan = false
-				planning.plan(
-					PlanRequest(
-						car_model = carModel,
-						destinations = destinations,
-						initial_soc_perc = carData.soc,
-						max_speed = maxSpeed,
-						ref_consumption = referenceConsumption,
-						outside_temp = carData.externalTemperature.toDouble(),
-						find_alts = find_alts,
-						find_next_charger_alts = find_next_charger_alts,
-						plan_uuid = plan_uuid
-					),
-					{
-						if (find_next_charger_alts == true) {
-							handler?.post {
-								nextChargerResult = it
-								error = null
-								routingInProgress = false
-							}
-						} else {
-							handler?.post {
-								nextChargerResult = null
-								planResult = it
-								error = null
-								routingInProgress = false
-							}
-						}
-					},
-					{
-						handler?.post {
-							error = it
-							routingInProgress = false
-						}
-					})
-			}
+				.takeIf { it.size > 1 }
+				?.mapIndexed { index, it ->
+					Destination(
+							it.latitude,
+							it.longitude,
+							is_my_pos = if (index == 0) true else null
+					)
+				}
+				?.let { destinations ->
+					routingInProgress = true
+					routingDataListener.onPlanningTriggered()
+					shouldReplan = false
+					planning.plan(
+							PlanRequest(
+									car_model = carModel,
+									destinations = destinations,
+									initial_soc_perc = carData.soc,
+									charger_soc_perc = minSocCharger,
+									arrival_soc_perc = minSocDestination,
+									max_speed = maxSpeed,
+									ref_consumption = referenceConsumption,
+									outside_temp = carData.externalTemperature.toDouble(),
+									find_alts = find_alts,
+									find_next_charger_alts = find_next_charger_alts,
+									plan_uuid = plan_uuid
+							),
+							{
+								if (find_next_charger_alts == true) {
+									handler?.post {
+										nextChargerResult = it
+										error = null
+										routingInProgress = false
+									}
+								} else {
+									handler?.post {
+										nextChargerResult = null
+										planResult = it
+										error = null
+										routingInProgress = false
+									}
+								}
+							},
+							{
+								handler?.post {
+									error = it
+									routingInProgress = false
+								}
+							})
+				}
 	}
 
 	class PositionRuler private constructor(
-		private val point: Point,
-		private val ruler: CheapRuler
+			private val point: Point,
+			private val ruler: CheapRuler
 	) {
 
 		companion object {
 			fun of(position: Position): PositionRuler? {
 				return if (position.isValid()) {
 					PositionRuler(
-						Point(position.latitude, position.longitude),
-						CheapRuler.fromLatitude(position.latitude, Units.METRES)
+							Point(position.latitude, position.longitude),
+							CheapRuler.fromLatitude(position.latitude, Units.METRES)
 					)
 				} else null
 			}
@@ -319,40 +366,6 @@ class RoutingService(
 		}
 	}
 
-	class PathStepDistance(val stepIndex: Int, val pathStepIndex: Int, val distance: Double)
-	class StepSegmentDistance(val stepIndex: Int, val distance: Double)
-	class StepDistance(val stepIndex: Int, val distance: Double)
-
-	class RouteDistance private constructor(
-		val routeIndex: Int,
-		val stepIndex: Int,
-		val pathStepIndex: Int?,
-		val distance: Double
-	) {
-		companion object {
-			fun fromPathStep(routeIndex: Int, pathStepDistance: PathStepDistance): RouteDistance {
-				return RouteDistance(
-					routeIndex,
-					pathStepDistance.stepIndex,
-					pathStepDistance.pathStepIndex,
-					pathStepDistance.distance
-				)
-			}
-
-			fun fromStepSegment(
-				routeIndex: Int,
-				stepSegmentDistance: StepSegmentDistance
-			): RouteDistance {
-				return RouteDistance(
-					routeIndex,
-					stepSegmentDistance.stepIndex,
-					null,
-					stepSegmentDistance.distance
-				)
-			}
-		}
-	}
-
 	enum class DrivingMode(val raw: Int) {
 		COMFORT(2),
 		COMFORT_PLUS(9),
@@ -366,81 +379,52 @@ class RoutingService(
 
 	companion object {
 
-		const val MAX_WAYPOINT_DISTANCE = 50.0
+		const val MAX_WAYPOINT_SQUARE_DISTANCE = 50.0 * 50.0
 
-		fun calcRouteDistances(position: Position, routes: List<Route>?): List<RouteDistance>? {
-			return PositionRuler.of(position)?.let { ruler ->
-				routes?.mapIndexed { index, route ->
-					closestPathStep(ruler, route)?.let { RouteDistance.fromPathStep(index, it) }
-						?: closestStepSegment(ruler, route)?.let { fromStepSegment(index, it) }
-				}?.filterNotNull()
-			}
-		}
-
-		fun closestPathStep(ruler: PositionRuler, route: Route): PathStepDistance? {
-			return route.steps?.mapIndexed { stepIndex, step ->
+		// returns triple of stepIndex, pathStepIndex and distance
+		fun closestPathStepTriple(ruler: PositionRuler, route: Route): Triple<Int,Int,Double>? {
+			return route.steps?.mapIndexedNotNull { stepIndex, step ->
 				step.path?.mapIndexed { pathStepIndex, pathStep ->
-					PathStepDistance(stepIndex, pathStepIndex, ruler.squareDistance(pathStep))
+					Triple(stepIndex, pathStepIndex, ruler.squareDistance(pathStep))
 				}?.minWithOrNull { o1, o2 ->
-					o1.distance.compareTo(o2.distance)
+					o1.third.compareTo(o2.third)
 				}
-			}?.filterNotNull()?.minWithOrNull { o1, o2 ->
-				o1.distance.compareTo(o2.distance)
+			}?.minWithOrNull { o1, o2 ->
+				o1.third.compareTo(o2.third)
 			}?.let {
-				PathStepDistance(it.stepIndex, it.pathStepIndex, sqrt(it.distance))
+				Triple(it.first, it.second, sqrt(it.third))
 			}
 		}
 
-		fun closestStepSegment(ruler: PositionRuler, route: Route): StepSegmentDistance? {
-
-			class Previous(
-				val step: Step? = null,
-				val stepSegmentDistance: StepSegmentDistance? = null
-			)
-
-			return route.steps?.foldRightIndexed(Previous(), { index, step, previous ->
-				if (previous.step == null) {
-					Previous(step, null)
+		// returns pair of stepIndex and distance
+		fun closestStepSegmentPair(ruler: PositionRuler, route: Route): Pair<Int,Double>? {
+			return route.steps?.foldRightIndexed(Pair<Step?, Pair<Int, Double>?>(null, null), { stepIndex, step, previous ->
+				if (previous.first == null) {
+					Pair(step, null)
 				} else {
-					val distance = ruler.pointToSegmentDistance(step, previous.step)
-					Previous(
-						step,
-						if (previous.stepSegmentDistance == null || previous.stepSegmentDistance.distance > distance) {
-							StepSegmentDistance(index, distance)
-						} else {
-							previous.stepSegmentDistance
-						}
-					)
-				}
-			})?.stepSegmentDistance
-		}
-
-		fun getExistingWaypointIndices(
-			positions: List<Position>,
-			routes: List<Route>,
-			maxDistance: Double
-		): List<List<Int>> {
-			val maxSquareDistance = maxDistance.times(maxDistance)
-			return positions.map { position ->
-				PositionRuler.of(position)?.let { ruler ->
-					routes.map { route ->
-						route.steps?.mapIndexed { stepIndex, step ->
-							StepDistance(stepIndex, ruler.squareDistance(step))
-						}?.minWithOrNull { o1, o2 ->
-							o1.distance.compareTo(o2.distance)
-						}?.let {
-							if (it.distance < maxSquareDistance) {
-								it.stepIndex
-							} else null
-						}
+					ruler.pointToSegmentDistance(step, previous.first!!).let { distance ->
+						Pair(
+								step,
+								if (previous.second == null || previous.second!!.second > distance) {
+									Pair(stepIndex, distance)
+								} else {
+									previous.second
+								}
+						)
 					}
 				}
-			}.let { result ->
-				routes.mapIndexed { routeIndex, _ ->
-					positions.mapIndexed { positionIndex, _ ->
-						result[positionIndex]?.get(routeIndex)
-					}.filterNotNull()
-				}
+			})?.second
+		}
+
+		fun getMatchingIndices(rulers: List<PositionRuler>, route: Route, maxSquareDistance: Double): List<Int> {
+			return rulers.mapNotNull { ruler ->
+				route.steps?.mapIndexed { stepIndex, step ->
+								Pair(stepIndex, ruler.squareDistance(step))
+							}?.filter {
+								it.second < maxSquareDistance
+							}?.minWithOrNull { o1, o2 ->
+								o1.second.compareTo(o2.second)
+							}?.first
 			}
 		}
 	}

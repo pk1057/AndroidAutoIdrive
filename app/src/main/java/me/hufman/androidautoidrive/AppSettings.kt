@@ -57,6 +57,8 @@ interface AppSettings {
 		EVPLANNING_MAXSPEED("EVPlanning_Maxspeed", "110", "Maximum speed"),
 		EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE("EVPLanning_Maxspeed_Override_enable", "false", "Use Drive-mode for Maximum Speed"),
 		EVPLANNING_REFERENCE_CONSUMPTION("EVPlanning_Reference_Consumption", "165", "Reference Consumption"),
+		EVPLANNING_MIN_SOC_CHARGER("EvPlanning_Min_SOC_Charger", "10", "Minimum SOC when arriving at charger"),
+		EVPLANNING_MIN_SOC_FINAL("EvPlanning_Min_SOC_Dest", "10", "Minimum SOC when arriving at destination"),
 	}
 
 	/** Store the active preferences in a singleton */

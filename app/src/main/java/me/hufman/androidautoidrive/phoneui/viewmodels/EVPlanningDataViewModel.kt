@@ -33,9 +33,9 @@ class EVPlanningDataViewModel(): ViewModel() {
 	}
 
 	companion object {
-		private val _routingData = MutableLiveData<RoutingData>()
+		private val _routeData = MutableLiveData<RoutingData>()
 		fun setRoutingData(routingData: RoutingData) {
-			_routingData.postValue(routingData)
+			_routeData.postValue(routingData)
 		}
 		private val _status = MutableLiveData<String>()
 		fun setStatus(status: String) {
@@ -59,7 +59,7 @@ class EVPlanningDataViewModel(): ViewModel() {
 		}
 	}
 
-	val routingData: LiveData<RoutingData> = _routingData
+	val routeData: LiveData<RoutingData> = _routeData
 	val status: LiveData<String> = _status
 	val cardataUpdates: LiveData<Int> = _cardataUpdates
 	val error: LiveData<String> = _error

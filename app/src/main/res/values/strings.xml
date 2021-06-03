@@ -428,5 +428,7 @@
     <string name="EVPLANNING_MAX_SPEED">Maximum Speed</string>
     <string name="EVPLANNING_MAX_SPEED_DRIVEMODE_ENABLE">Use Driving-mode for Maximum-speed</string>
     <string name="EVPLANNING_REFERENCE_CONSUMPTION">Reference Consumption</string>
+    <string name="EVPLANNING_MIN_SOC_CHARGER">Minimum SOC at Charger</string>
+    <string name="EVPLANNING_MIN_SOC_FINAL">Minimum SOC at Destination</string>
 
 </resources>
