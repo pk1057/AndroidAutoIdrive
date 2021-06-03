@@ -182,7 +182,7 @@ class DetailsView(
 			if (!navigationModel.selectedWaypointValid) {
 				"[${L.EVPLANNING_INVALID}]"
 			} else null,
-			)
+		).joinToString(" ")
 
 		val nameListData = RHMIModel.RaListModel.RHMIListConcrete(3)
 		nameListData.addRow(arrayOf(icon, "", name))
