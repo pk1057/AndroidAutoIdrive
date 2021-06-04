@@ -20,6 +20,7 @@ package me.hufman.androidautoidrive.carapp.evplanning.views
 import android.os.Handler
 import android.util.Log
 import de.bmw.idrive.BMWRemoting
+import io.sentry.Sentry
 import me.hufman.androidautoidrive.*
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
 import me.hufman.androidautoidrive.carapp.RHMIActionAbort
@@ -30,6 +31,7 @@ import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Comp
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatTime
 import me.hufman.androidautoidrive.carapp.evplanning.TAG
 import me.hufman.androidautoidrive.evplanning.DisplayRoute
+import me.hufman.androidautoidrive.evplanning.RoutingService.Companion.MAX_STEP_OFFSET
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.idriveconnectionkit.rhmi.*
 import kotlin.reflect.KClass
@@ -272,46 +274,51 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 		if (!visible) {
 			return
 		}
-		state.getTextModel()?.asRaDataModel()?.value = listOfNotNull(
-			L.EVPLANNING_TITLE_ROUTES,
-			if (navigationModel.isPlanning) {
-				"[${L.EVPLANNING_REPLANNING}...]"
-			} else if (navigationModel.isError) {
-				"[${L.EVPLANNING_ERROR}]"
-			} else null,
-		).joinToString(" ")
+		try {
+			state.getTextModel()?.asRaDataModel()?.value = listOfNotNull(
+				L.EVPLANNING_TITLE_ROUTES,
+				when {
+					navigationModel.isPlanning -> "[${L.EVPLANNING_REPLANNING}...]"
+					navigationModel.isError -> "[${L.EVPLANNING_ERROR}]"
+					navigationModel.shouldReplan -> "[${L.EVPLANNING_SHOULD_REPLAN}]"
+					else -> null
+				}
+			).joinToString(" ")
 
-		routesList.getModel()?.value = if (navigationModel.isError) {
-			RHMIModel.RaListModel.RHMIListConcrete(3).apply {
-				addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "",))
-			}
-		} else {
-			val routes = navigationModel.displayRoutes
-			if (routes.isNullOrEmpty()) {
-				emptyListData
+			routesList.getModel()?.value = if (navigationModel.isError) {
+				RHMIModel.RaListModel.RHMIListConcrete(3).apply {
+					addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "",))
+				}
 			} else {
-				//5 columns: icon, title, dist, soc, eta
-				object : RHMIListAdapter<DisplayRoute>(3, routes) {
-					override fun convertRow(index: Int, route: DisplayRoute): Array<Any> {
-						val icon = if (route.contains_waypoint) iconFlag ?: "" else ""
-						val addition = if (!navigationModel.displayRoutesValid) {
-							"[${L.EVPLANNING_INVALID}]"
-						} else if (route.deviation != null && route.deviation > 50) {
-							"${L.EVPLANNING_OFFSET}: ${formatDistanceDetailed(route.deviation)}"
-						} else null
-						val firstLine = listOfNotNull(
-							route.trip_dst?.let { formatDistance(it) },
-							route.arrival_duration?.let { "(${formatTime(it)}h)" },
-							addition,
-						).joinToString(" ")
-						val secondLine = listOfNotNull(
-							route.num_charges?.let { "${it} charges" },
-							route.charge_duration?.let { "(${formatTime(it)}h)" },
-						).joinToString(" ")
-						return arrayOf(icon, "", "${firstLine}\n${secondLine}")
+				val routes = navigationModel.displayRoutes
+				if (routes.isNullOrEmpty()) {
+					emptyListData
+				} else {
+					//5 columns: icon, title, dist, soc, eta
+					object : RHMIListAdapter<DisplayRoute>(3, routes) {
+						override fun convertRow(index: Int, route: DisplayRoute): Array<Any> {
+							val icon = if (route.contains_waypoint) iconFlag ?: "" else ""
+							val addition = when {
+								!navigationModel.displayRoutesValid -> "[${L.EVPLANNING_INVALID}]"
+								route.deviation != null && route.deviation > MAX_STEP_OFFSET -> "${L.EVPLANNING_OFFSET}: ${formatDistanceDetailed(route.deviation)}"
+								else -> null
+							}
+							val firstLine = listOfNotNull(
+								route.trip_dst?.let { formatDistance(it) },
+								route.arrival_duration?.let { "(${formatTime(it)}h)" },
+								addition,
+							).joinToString(" ")
+							val secondLine = listOfNotNull(
+								route.num_charges?.let { "${it} charges" },
+								route.charge_duration?.let { "(${formatTime(it)}h)" },
+							).joinToString(" ")
+							return arrayOf(icon, "", "${firstLine}\n${secondLine}")
+						}
 					}
 				}
 			}
+		} catch (t: Throwable) {
+			Sentry.capture(t)
 		}
 	}
 

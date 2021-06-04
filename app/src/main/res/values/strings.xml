@@ -152,6 +152,8 @@
     <string name="lbl_evplanning_max_speed">Maximum speed</string>
     <string name="lbl_evplanning_max_speed_drivemode_enable">Use Drive-Mode for Maximum-speed</string>
     <string name="lbl_evplanning_reference_consumption">Reference Consumption</string>
+    <string name="lbl_evplanning_min_soc_charger">Minimum SOC at Charger</string>
+    <string name="lbl_evplanning_min_soc_final">Minimum SOC at Destination</string>
 
     <string name="connectionStatusMissingConnectedApp">Can\'t find Connected or Connected Classic app</string>
     <string name="connectionStatusWaiting">Waiting for connection to car</string>
@@ -406,6 +408,7 @@
 
     <string name="EVPLANNING_REPLANNING">Planning in Progress</string>
     <string name="EVPLANNING_ERROR">Planning Error</string>
+    <string name="EVPLANNING_SHOULD_REPLAN">Replanning suggested</string>
 
     <string name="EVPLANNING_ACTION_PLAN">Trigger new Planning</string>
     <string name="EVPLANNING_ACTION_PLAN_ALTERNATIVES">Trigger Planning of Next Charger Alternatives</string>

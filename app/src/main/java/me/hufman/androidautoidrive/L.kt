@@ -79,6 +79,7 @@ object L {
 	var EVPLANNING_TITLE_WAYPOINT = "EVPlanning - Details"
 	var EVPLANNING_REPLANNING = "Planning in Progress"
 	var EVPLANNING_ERROR = "Planning Error"
+	var EVPLANNING_SHOULD_REPLAN = "Replanning suggested"
 	var EVPLANNING_EMPTY_LIST = "No Charging Stops"
 	var EVPLANNING_ACTIONS = "Actions"
 	var EVPLANNING_OPTIONS = "Options"

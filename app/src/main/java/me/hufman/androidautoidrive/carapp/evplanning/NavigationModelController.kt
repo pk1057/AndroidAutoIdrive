@@ -19,6 +19,7 @@ package me.hufman.androidautoidrive.carapp.evplanning
 
 import android.content.Context
 import android.location.Address
+import io.sentry.Sentry
 import me.hufman.androidautoidrive.carapp.navigation.NavigationParser
 import me.hufman.androidautoidrive.carapp.navigation.NavigationTriggerSender
 import me.hufman.androidautoidrive.evplanning.DisplayRoute
@@ -29,6 +30,7 @@ class NavigationModel {
 
 	var isPlanning: Boolean = false
 	var isError: Boolean = false
+	var shouldReplan: Boolean = false
 	var isNextChargerMode: Boolean = false
 
 	var errorMessage: String? = null
@@ -55,6 +57,7 @@ class NavigationModelController(val context: Context) {
 
 	val navigationModel = NavigationModel()
 
+	// to be called from ui:
 	fun selectRoute(index: Int): Boolean {
 		with(navigationModel) {
 			selectedRouteIndex = index
@@ -65,6 +68,7 @@ class NavigationModelController(val context: Context) {
 		}
 	}
 
+	// to be called from ui:
 	fun selectWaypoint(index: Int): Boolean {
 		with(navigationModel) {
 			selectedWaypointIndex = index
@@ -79,6 +83,23 @@ class NavigationModelController(val context: Context) {
 		}
 	}
 
+	// to be called from ui:
+	fun switchToAllWaypoints() {
+		navigationModel.apply {
+			isNextChargerMode = false
+			waypointListObserver?.invoke()
+		}
+	}
+
+	// to be called from ui:
+	fun switchToAlternatives() {
+		navigationModel.apply {
+			isNextChargerMode = true
+			waypointListObserver?.invoke()
+		}
+	}
+
+	// to be called from ui:
 	fun navigateToWaypoint() {
 		navigationModel.selectedWaypoint?.let { entry ->
 			Address(Locale.getDefault()).apply {
@@ -94,67 +115,66 @@ class NavigationModelController(val context: Context) {
 		}
 	}
 
+	// to be called from RoutingService through NavigationModelUpdater.onRoutingDataChanged
 	fun setDisplayRoutes(newDisplayRoutes: List<DisplayRoute>?) {
-		navigationModel.apply {
-			displayRoutes = newDisplayRoutes
-			displayRoutesValid = true
-			routesListObserver?.invoke()
-			if (!isNextChargerMode) {
-				selectedRouteIndex?.let {
-					selectedRoute = displayRoutes?.getOrNull(it)?.displayWaypoints
-					selectedRouteValid = true
-					waypointListObserver?.invoke()
-				}
-				selectedWaypointIndex?.let {
-					selectedWaypoint = selectedRoute?.getOrNull(it)
-					selectedWaypointValid = true
-					selectedWaypointObserver?.invoke()
+		try {
+			navigationModel.apply {
+				displayRoutes = newDisplayRoutes
+				displayRoutesValid = true
+				routesListObserver?.invoke()
+				if (!isNextChargerMode) {
+					selectedRouteIndex?.let {
+						selectedRoute = displayRoutes?.getOrNull(it)?.displayWaypoints
+						selectedRouteValid = true
+					}
+					selectedWaypointIndex?.let {
+						selectedWaypoint = selectedRoute?.getOrNull(it)
+						selectedWaypointValid = true
+					}
 				}
 			}
+		} catch (t: Throwable) {
+			Sentry.capture(t)
 		}
 	}
 
+	// to be called from RoutingService through NavigationModelUpdater.onRoutingDataChanged
 	fun setNextChargerWaypoints(displayWaypoints: List<DisplayWaypoint>?) {
-		navigationModel.apply {
-			if (displayWaypoints == null) {
+		try {
+			navigationModel.apply {
+				if (displayWaypoints == null) {
+					if (isNextChargerMode) {
+						isNextChargerMode = false
+						selectedWaypointIndex = null
+						selectedWaypointValid = false
+					}
+				} else {
+					if (nextChargerWaypoints == null) {
+						isNextChargerMode = true
+						selectedWaypointIndex = null
+					}
+				}
+				nextChargerWaypoints = displayWaypoints
 				if (isNextChargerMode) {
-					isNextChargerMode = false
-					selectedWaypointIndex = null
-					selectedWaypointValid = false
-					selectedWaypointObserver?.invoke()
-				}
-			} else {
-				if (nextChargerWaypoints == null) {
-					isNextChargerMode = true
-					selectedWaypointIndex = null
+					selectedWaypointIndex?.let {
+						selectedWaypoint = nextChargerWaypoints?.getOrNull(it)
+						selectedWaypointValid = true
+					}
 				}
 			}
-			nextChargerWaypoints = displayWaypoints
-			if (isNextChargerMode) {
-				selectedWaypointIndex?.let {
-					selectedWaypoint = nextChargerWaypoints?.getOrNull(it)
-					selectedWaypointValid = true
-					selectedWaypointObserver?.invoke()
-				}
-				waypointListObserver?.invoke()
-			}
+		} catch (t: Throwable) {
+			Sentry.capture(t)
 		}
 	}
 
-	fun switchToAllWaypoints() {
+	// to be called from RoutingService through NavigationModelUpdater.onRoutingDataChanged
+	fun setShouldReplan(value: Boolean) {
 		navigationModel.apply {
-			isNextChargerMode = false
-			waypointListObserver?.invoke()
+			shouldReplan = value
 		}
 	}
 
-	fun switchToAlternatives() {
-		navigationModel.apply {
-			isNextChargerMode = true
-			waypointListObserver?.invoke()
-		}
-	}
-
+	// to be called from RoutingService through NavigationModelUpdater.onPlanChanged
 	fun planningFinished() {
 		navigationModel.apply {
 			isPlanning = false
@@ -165,38 +185,41 @@ class NavigationModelController(val context: Context) {
 			selectedRouteIndex = null // delete the indices only so anything that is on screen will stay for now
 			selectedWaypointIndex = null
 			isNextChargerMode = false
-			routesListObserver?.invoke()
-			waypointListObserver?.invoke()
-			selectedWaypointObserver?.invoke()
+			invokeAllObservers()
 		}
 	}
 
+	// to be called from RoutingService through NavigationModelUpdater.onNextChargerPlanChanged
 	fun nextChargerFinished() {
 		navigationModel.apply {
 			isPlanning = false
 			isError = false
 			selectedWaypointIndex = null
 			selectedWaypointValid = false
-			routesListObserver?.invoke()
-			waypointListObserver?.invoke()
-			selectedWaypointObserver?.invoke()
+			invokeAllObservers()
 		}
 	}
 
+	// to be called from RoutingService through NavigationModelUpdater.onPlanningTriggered
 	fun planningTriggered() {
 		navigationModel.apply {
 			isPlanning = true
-			routesListObserver?.invoke()
-			waypointListObserver?.invoke()
-			selectedWaypointObserver?.invoke()
+			invokeAllObservers()
 		}
 	}
 
+	// to be called from RoutingService through NavigationModelUpdater.onPlanningError
 	fun planningError(msg: String) {
 		navigationModel.apply {
 			isPlanning = false
 			isError = true
 			errorMessage = msg
+			invokeAllObservers()
+		}
+	}
+
+	fun invokeAllObservers() {
+		navigationModel.apply {
 			routesListObserver?.invoke()
 			waypointListObserver?.invoke()
 			selectedWaypointObserver?.invoke()

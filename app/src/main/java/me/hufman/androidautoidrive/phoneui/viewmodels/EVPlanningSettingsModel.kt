@@ -22,4 +22,6 @@ class EVPlanningSettingsModel(appContext: Context): ViewModel() {
 	val maxSpeed = StringLiveSetting(appContext,AppSettings.KEYS.EVPLANNING_MAXSPEED)
 	val maxSpeedDrivemodeEnable = BooleanLiveSetting(appContext,AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE)
 	val referenceConsumption = StringLiveSetting(appContext,AppSettings.KEYS.EVPLANNING_REFERENCE_CONSUMPTION)
+	val minSocCharger = StringLiveSetting(appContext,AppSettings.KEYS.EVPLANNING_MIN_SOC_CHARGER)
+	val minSocFinal = StringLiveSetting(appContext,AppSettings.KEYS.EVPLANNING_MIN_SOC_FINAL)
 }

@@ -19,6 +19,7 @@ package me.hufman.androidautoidrive.carapp.evplanning.views
 
 import android.os.Handler
 import android.util.Log
+import io.sentry.Sentry
 import me.hufman.androidautoidrive.*
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
 import me.hufman.androidautoidrive.carapp.RHMIActionAbort
@@ -26,7 +27,6 @@ import me.hufman.androidautoidrive.carapp.RHMIListAdapter
 import me.hufman.androidautoidrive.carapp.evplanning.*
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.TIME_FMT
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistance
-import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatTime
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatTimeDifference
 import me.hufman.androidautoidrive.carapp.evplanning.TAG
 import me.hufman.androidautoidrive.evplanning.DisplayWaypoint
@@ -245,122 +245,142 @@ class WaypointsListView(
 	}
 
 	fun drawNextChargers() {
-		state.getTextModel()?.asRaDataModel()?.value = listOfNotNull(
-			L.EVPLANNING_TITLE_ALTERNATIVES,
-			if (navigationModel.isPlanning) {
-				"[${L.EVPLANNING_REPLANNING}...]"
-			} else if (navigationModel.isError) {
-				"[${L.EVPLANNING_ERROR}]"
-			} else null,
-		).joinToString(" ")
+		try {
+			state.getTextModel()?.asRaDataModel()?.value = listOfNotNull(
+				L.EVPLANNING_TITLE_ALTERNATIVES,
+				when {
+					navigationModel.isPlanning -> "[${L.EVPLANNING_REPLANNING}...]"
+					navigationModel.isError -> "[${L.EVPLANNING_ERROR}]"
+					navigationModel.shouldReplan -> "[${L.EVPLANNING_SHOULD_REPLAN}]"
+					else -> null
+				}
+			).joinToString(" ")
 
-		waypointsList.getModel()?.value = if (navigationModel.isError) {
-			RHMIModel.RaListModel.RHMIListConcrete(5).apply {
-				addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "", "", ""))
-			}
-		} else {
-			val waypoints = navigationModel.nextChargerWaypoints
-			if (waypoints.isNullOrEmpty()) {
-				emptyListData
+			waypointsList.getModel()?.value = if (navigationModel.isError) {
+				RHMIModel.RaListModel.RHMIListConcrete(5).apply {
+					addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "", "", ""))
+				}
 			} else {
-				val addition = if (!navigationModel.selectedRouteValid) {
-					"[${L.EVPLANNING_INVALID}]"
-				} else null
-				//5 columns: icon, title, dist, soc, eta
-				object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
-					override fun convertRow(index: Int, waypoint: DisplayWaypoint): Array<Any> {
-						val icon = if (waypoint.is_waypoint) iconFlag ?: "" else ""
-						val firstLine = listOfNotNull(
-							waypoint.title ?: L.EVPLANNING_UNKNOWN_LOC,
-							addition,
-						).joinToString(" ")
-						val secondLine = listOfNotNull(
-							waypoint.operator?.let { "[${it}]" },
-							waypoint.num_chargers?.let {
-								if (it > 0) {
-									"$it"
-								} else {
-									null
-								}
-							},
-							waypoint.charger_type?.toUpperCase(Locale.getDefault()),
-							waypoint.trip_dst?.let { formatDistance(it) },
-							waypoint.soc_ariv?.let { "${it}%" },
-							waypoint.final_num_charges?.let { "(${it} Charges)" },
-						).joinToString(" ")
-						val delta_dst =
-							waypoint.delta_dst?.let { "+${formatDistance(it)}" } ?: ""
-						val delta_dur =
-							waypoint.delta_duration?.let { "+${formatTimeDifference(it)}" }
-								?: "--:--"
-						return arrayOf(
-							icon,
-							"",
-							"${firstLine}\n${secondLine}",
-							"",
-							"${delta_dst}\n${delta_dur}"
-						)
+				val waypoints = navigationModel.nextChargerWaypoints
+				if (waypoints.isNullOrEmpty()) {
+					emptyListData
+				} else {
+					val addition = if (!navigationModel.selectedRouteValid) {
+						"[${L.EVPLANNING_INVALID}]"
+					} else null
+					//5 columns: icon, title, dist, soc, eta
+					object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
+						override fun convertRow(index: Int, wp: DisplayWaypoint): Array<Any> {
+							val icon = if (wp.is_waypoint) iconFlag ?: "" else ""
+							val firstLine = listOfNotNull(
+								wp.title ?: L.EVPLANNING_UNKNOWN_LOC,
+								addition,
+							).joinToString(" ")
+							val secondLine = listOfNotNull(
+								wp.operator?.let { "[${it}]" },
+								wp.num_chargers?.let {
+									if (it > 0) {
+										"$it"
+									} else {
+										null
+									}
+								},
+								wp.charger_type?.toUpperCase(Locale.ROOT),
+								wp.trip_dst?.let { formatDistance(it) },
+								wp.soc_ariv?.let { "${String.format("%.1f",it)}%" },
+								when {
+									wp.soc_planned != null && wp.final_num_charges == null -> "(${String.format("%.0f",wp.soc_planned)}%)"
+									wp.soc_planned == null && wp.final_num_charges != null -> "(${wp.final_num_charges} Charges)"
+									wp.soc_planned != null && wp.final_num_charges != null -> "(${String.format("%.0f",wp.soc_planned)}%, ${wp.final_num_charges} Charges)"
+									else -> null
+								},
+							).joinToString(" ")
+							val delta_dst =
+								wp.delta_dst?.let { "+${formatDistance(it)}" } ?: ""
+							val delta_dur =
+								wp.delta_duration?.let { "+${formatTimeDifference(it)}" }
+									?: "--:--"
+							return arrayOf(
+								icon,
+								"",
+								"${firstLine}\n${secondLine}",
+								"",
+								"${delta_dst}\n${delta_dur}"
+							)
+						}
 					}
 				}
 			}
+		} catch (t: Throwable) {
+			Sentry.capture(t)
 		}
 	}
 
 	fun drawSelectedRoute() {
-		state.getTextModel()?.asRaDataModel()?.value = listOfNotNull(
-			L.EVPLANNING_TITLE_WAYPOINTS,
-			if (navigationModel.isPlanning) {
-				"[${L.EVPLANNING_REPLANNING}...]"
-			} else if (navigationModel.isError) {
-				"[${L.EVPLANNING_ERROR}]"
-			} else null,
-		).joinToString(" ")
+		try {
+			state.getTextModel()?.asRaDataModel()?.value = listOfNotNull(
+				L.EVPLANNING_TITLE_WAYPOINTS,
+				when {
+					navigationModel.isPlanning -> "[${L.EVPLANNING_REPLANNING}...]"
+					navigationModel.isError -> "[${L.EVPLANNING_ERROR}]"
+					navigationModel.shouldReplan -> "[${L.EVPLANNING_SHOULD_REPLAN}]"
+					else -> null
+				}
+			).joinToString(" ")
 
-		waypointsList.getModel()?.value = if (navigationModel.isError) {
-			RHMIModel.RaListModel.RHMIListConcrete(5).apply {
-				addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "", "", ""))
-			}
-		} else {
-			val waypoints = navigationModel.selectedRoute
-			if (waypoints.isNullOrEmpty()) {
-				emptyListData
+			waypointsList.getModel()?.value = if (navigationModel.isError) {
+				RHMIModel.RaListModel.RHMIListConcrete(5).apply {
+					addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "", "", ""))
+				}
 			} else {
-				val addition = if (!navigationModel.selectedRouteValid) {
-					"[${L.EVPLANNING_INVALID}]"
-				} else null
-				//5 columns: icon, title, dist, soc, eta
-				object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
-					override fun convertRow(index: Int, waypoint: DisplayWaypoint): Array<Any> {
-						val icon = if (waypoint.is_waypoint) iconFlag ?: "" else ""
-						val firstLine = listOfNotNull(
-							waypoint.title ?: L.EVPLANNING_UNKNOWN_LOC,
-							addition
-						).joinToString(" ")
-						val secondLine = listOfNotNull(
-							waypoint.operator?.let { "[${it}]" },
-							waypoint.num_chargers?.let {
-								if (it > 0) {
-									"${it}"
-								} else {
-									null
-								}
-							},
-							waypoint.charger_type?.toUpperCase(Locale.getDefault()),
-							waypoint.step_dst?.let { formatDistance(it) },
-							waypoint.soc_ariv?.let { "${it}%" },
-						).joinToString(" ")
-						val trip_dst = waypoint.trip_dst?.let { formatDistance(it) } ?: "-"
-						val eta = waypoint.eta?.format(TIME_FMT) ?: "--:--"
-						return arrayOf(
-							icon,
-							"",
-							"${firstLine}\n${secondLine}",
-							"",
-							"${trip_dst}\n${eta}"
-						)
+				val waypoints = navigationModel.selectedRoute
+				if (waypoints.isNullOrEmpty()) {
+					emptyListData
+				} else {
+					val addition = if (!navigationModel.selectedRouteValid) {
+						"[${L.EVPLANNING_INVALID}]"
+					} else null
+					//5 columns: icon, title, dist, soc, eta
+					object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
+						override fun convertRow(index: Int, wp: DisplayWaypoint): Array<Any> {
+							val icon = if (wp.is_waypoint) iconFlag ?: "" else ""
+							val firstLine = listOfNotNull(
+								wp.title ?: L.EVPLANNING_UNKNOWN_LOC,
+								addition
+							).joinToString(" ")
+							val secondLine = listOfNotNull(
+								wp.operator?.let { "[${it}]" },
+								wp.num_chargers?.let {
+									if (it > 0) {
+										"${it}"
+									} else {
+										null
+									}
+								},
+								wp.charger_type?.toUpperCase(Locale.ROOT),
+								wp.step_dst?.let { formatDistance(it) },
+								when {
+									wp.soc_ariv == null && wp.soc_planned != null -> "${String.format("%.0f",wp.soc_planned)}%"
+									wp.soc_ariv != null && wp.soc_planned == null -> "${String.format("%.1f",wp.soc_ariv)}%"
+									wp.soc_ariv != null && wp.soc_planned != null -> "${String.format("%.1f",wp.soc_ariv)}% (${String.format("%.0f",wp.soc_planned)}%)"
+									else -> null
+								},
+							).joinToString(" ")
+							val trip_dst = wp.trip_dst?.let { formatDistance(it) } ?: "-"
+							val eta = wp.eta?.format(TIME_FMT) ?: "--:--"
+							return arrayOf(
+								icon,
+								"",
+								"${firstLine}\n${secondLine}",
+								"",
+								"${trip_dst}\n${eta}"
+							)
+						}
 					}
 				}
 			}
+		} catch (t: Throwable) {
+			Sentry.capture(t)
 		}
 	}
 

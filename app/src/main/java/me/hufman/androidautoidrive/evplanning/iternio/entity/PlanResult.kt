@@ -65,8 +65,8 @@ data class Step(
 		val waypoint_idx: Int?,               // 0 [integer]: The index in the input destination array for this destination
 		val is_amenity_charger: Boolean?,     // ?
 		val is_destcharger: Boolean?,         // false, ?
-		val arrival_perc: Int?,               // 46, [SoC %]: The planned arrival SoC at this step (before any charging).
-		val departure_perc: Int?,             // 83, [SoC %]: The planned departure SoC at this step (after any charging).
+		val arrival_perc: Double?,               // 46, [SoC %]: The planned arrival SoC at this step (before any charging).
+		val departure_perc: Double?,             // 83, [SoC %]: The planned departure SoC at this step (after any charging).
 		val departure_duration: Int?,         // 12866, [s]: The total time left for the whole route when departing this step.
 		val departure_dist: Int?,             // 243479, [m]: The total distance left for the whole route when departing this step.
 		val arrival_dist: Int?,               // 243479,

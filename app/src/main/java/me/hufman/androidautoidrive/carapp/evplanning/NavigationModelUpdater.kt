@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package me.hufman.androidautoidrive.carapp.evplanning
 
+import io.sentry.Sentry
 import me.hufman.androidautoidrive.CarThread
 import me.hufman.androidautoidrive.evplanning.*
 import me.hufman.androidautoidrive.evplanning.iternio.entity.Plan
@@ -43,22 +44,26 @@ class NavigationModelUpdater() {
 
 		override fun onRoutingDataChanged(routingData: RoutingData) {
 
-			//TODO: for debugging only, remove later:
-			EVPlanningDataViewModel.setRoutingData(routingData)
+			try {
+				//TODO: for debugging only, remove later:
+				EVPlanningDataViewModel.setRoutingData(routingData)
 
-			val waypoints = routingData.routeData?.let { routeData ->
-				nextChargerPlan?.routes?.let {
-					parseRouteData(it, routeData)
+				val waypoints = routingData.routeData?.let { routeData ->
+					nextChargerPlan?.routes?.let {
+						parseRouteData(routingData.carData, it, routeData)
+					}
+				}?.let { extractNextChargerWaypoints(it) }
+				val displayRoutes = routingData.routeData?.let { routeData ->
+					existingPlan?.routes?.let { parseRouteData(routingData.carData, it, routeData) }
 				}
-			}?.let { extractNextChargerWaypoints(it) }
-			threadCarApp?.post {
-				navigationModelController?.setNextChargerWaypoints(waypoints)
-			}
-			val displayRoutes = routingData.routeData?.let { routeData ->
-				existingPlan?.routes?.let { parseRouteData(it, routeData) }
-			}
-			threadCarApp?.post {
-				navigationModelController?.setDisplayRoutes(displayRoutes)
+				threadCarApp?.post {
+					navigationModelController?.setNextChargerWaypoints(waypoints)
+					navigationModelController?.setDisplayRoutes(displayRoutes)
+					navigationModelController?.setShouldReplan(routingData.shouldReplan)
+					navigationModelController?.invokeAllObservers()
+				}
+			} catch (t: Throwable) {
+				Sentry.capture(t)
 			}
 		}
 
@@ -135,6 +140,7 @@ class NavigationModelUpdater() {
 						trip_dst = it.trip_dst,
 						step_dst = it.step_dst,
 						soc_ariv = it.soc_ariv,
+						soc_planned = it.soc_planned,
 						soc_dep = it.soc_dep,
 						eta = it.eta,
 						etd = it.etd,
@@ -159,22 +165,23 @@ class NavigationModelUpdater() {
 			}.filterNotNull()
 		}
 
-		fun parseRouteData(routes: List<Route>, routeData: List<RouteData>): List<DisplayRoute>? {
+		fun parseRouteData(carData: CarData, routes: List<Route>, routeDataList: List<RouteData>): List<DisplayRoute>? {
 			val now = LocalDateTime.now()
-			return routeData.filterNot {
+			return routeDataList.filterNot {
 				it.stepIndex == null
-			}.mapNotNull { data ->
-				routes.getOrNull(data.routeIndex)?.let { route ->
-					val (start_dist, start_time) = deriveStartDistanceTime(data, route)
+			}.mapNotNull { routeData ->
+				routes.getOrNull(routeData.routeIndex)?.let { route ->
+					val (start_dist, start_time) = deriveStartTimeDuration(routeData, route)
 					route.steps?.filterIndexed { index, _ ->
-						index >= data.stepIndex!!
+						index >= routeData.stepIndex!!
 					}?.let { steps ->
 						accumulateDisplayData(
 							steps,
-							data.pathStepIndex,
-							data.existingWaypointIndices.map { it - data.stepIndex!! },
+							routeData.pathStepIndex,
+							routeData.existingWaypointIndices.map { it - routeData.stepIndex!! },
 							start_time,
 							start_dist,
+							routeData.soc_ariv,
 							now
 						)
 					}?.let {
@@ -183,7 +190,7 @@ class NavigationModelUpdater() {
 							arrival_duration = it.arrival_duration,
 							num_charges = it.num_charges,
 							charge_duration = it.charge_duration,
-							deviation = data.distance?.toInt(),
+							deviation = routeData.distance?.toInt(),
 							contains_waypoint = it.displayWaypoints.filter { waypoint -> waypoint.is_waypoint }.size > 1,
 							displayWaypoints = it.displayWaypoints
 						)
@@ -192,19 +199,30 @@ class NavigationModelUpdater() {
 			}
 		}
 
-		private fun deriveStartDistanceTime(
-			data: RouteData,
+		// returns Triple of remaining distance (in meter), remaining time (in seconds)
+		// and the difference of real soc and estimated soc at current pathstep
+		private fun deriveStartTimeDuration(
+			routeData: RouteData,
 			route: Route
-		) = data.stepIndex?.let { stepIndex ->
-			data.pathStepIndex?.let {
+		) = routeData.stepIndex?.let { stepIndex ->
+			routeData.pathStepIndex?.let {
 				route.steps?.getOrNull(stepIndex)?.path?.getOrNull(it)
 			}?.let {
-				Pair(it.remaining_dist?.times(1000)?.toInt(), it.remaining_time)
+				Pair(
+					it.remaining_dist?.times(1000)?.toInt(),
+					it.remaining_time,
+				)
 			} ?: route.steps?.getOrNull(stepIndex)?.let {
-				Pair(it.departure_dist, it.departure_duration)
+				Pair(
+					it.departure_dist,
+					it.departure_duration,
+				)
 			}
 		} ?: route.steps?.firstOrNull()?.let {
-			Pair(it.departure_dist, it.departure_duration)
+			Pair(
+				it.departure_dist,
+				it.departure_duration,
+			)
 		} ?: Pair(null, null)
 
 		private fun accumulateDisplayData(
@@ -213,6 +231,7 @@ class NavigationModelUpdater() {
 			wayPointIndices: List<Int>?,
 			start_time: Int?,
 			start_dist: Int?,
+			soc_ariv: Double?,
 			now: LocalDateTime
 		) = steps.foldIndexed(Acc(), { index, acc, step ->
 			// include starting-point only if it's a charger and it is very close:
@@ -271,7 +290,11 @@ class NavigationModelUpdater() {
 						}
 							?: acc.previous?.drive_dist
 					},
-					soc_ariv = step.arrival_perc,
+					soc_ariv = when (index) {
+						1 -> soc_ariv
+						else -> null
+					},
+					soc_planned = step.arrival_perc,
 					soc_dep = if (step.is_charger == true) {
 						step.departure_perc
 					} else null,

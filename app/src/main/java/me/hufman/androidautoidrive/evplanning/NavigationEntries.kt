@@ -37,12 +37,13 @@ data class DisplayWaypoint(
 	val operator: String? = null,
 	val charger_type: String? = null,    // CCS, Chademo or Type2
 	val is_waypoint: Boolean,            // is this an iDrive Waypoint?
-	val is_initial_charger: Boolean,            // is this the current (or very close by) position?
+	val is_initial_charger: Boolean,     // is this the current (or very close by) position?
 	val address: String,
 	val trip_dst: Int? = null,           // distance to current location in meter
 	val step_dst: Int? = null,           // distance since last stop in meter
-	val soc_ariv: Int? = null,           // estimated state of charge on arrival in percent
-	val soc_dep: Int? = null,            // recommended state of charge at departure in percent
+	val soc_ariv: Double? = null,           // estimated state of charge on arrival (as of real soc) in percent
+	val soc_planned: Double? = null,        // estimated state of charge on arrival (as of planning) in percent
+	val soc_dep: Double? = null,            // recommended state of charge at departure in percent
 	val eta: LocalDateTime? = null,      // estimated time of arrival
 	val etd: LocalDateTime? = null,      // estimated time of departure
 	val duration: Int? = null,           // charging duration in minutes

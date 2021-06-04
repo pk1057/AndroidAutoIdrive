@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package me.hufman.androidautoidrive.carapp.evplanning.views
 
+import io.sentry.Sentry
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.androidautoidrive.PhoneAppResources
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
@@ -26,7 +27,7 @@ import me.hufman.androidautoidrive.carapp.RHMIModelType
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.TIME_FMT
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistance
 import me.hufman.idriveconnectionkit.rhmi.*
-import java.util.ArrayList
+import java.util.*
 
 class DetailsView(
 	val state: RHMIState,
@@ -156,127 +157,142 @@ class DetailsView(
 			return
 		}
 
-		// find the notification, or bail to the list
-		//TODO: implement retrival of navigationEntry from list
-		//val notification = NotificationsState.getNotificationByKey(selectedNavigationEntry?.key)
-		val display: DisplayWaypoint? = navigationModel.selectedWaypoint
-		if (display == null) {
-			focusTriggerController.focusState(listState, false)
-			return
-		}
+		try {
+			// find the notification, or bail to the list
+			//TODO: implement retrival of navigationEntry from list
+			//val notification = NotificationsState.getNotificationByKey(selectedNavigationEntry?.key)
+			val wp: DisplayWaypoint? = navigationModel.selectedWaypoint
+			if (wp == null) {
+				focusTriggerController.focusState(listState, false)
+				return
+			}
 
-		// prepare the app icon and title
-		val icon = display.icon?.let { graphicsHelpers.compress(it, 48, 48) } ?: ""
+			// prepare the app icon and title
+			val icon = wp.icon?.let { graphicsHelpers.compress(it, 48, 48) } ?: ""
 
-		val title = listOfNotNull(
-			L.EVPLANNING_TITLE_WAYPOINT,
-			if (navigationModel.isPlanning) {
-				"[${L.EVPLANNING_REPLANNING}...]"
-			} else if (navigationModel.isError) {
-				"[${L.EVPLANNING_ERROR}]"
-			} else null,
-		).joinToString(" ")
+			val title = listOfNotNull(
+				L.EVPLANNING_TITLE_WAYPOINT,
+				when {
+					navigationModel.isPlanning -> "[${L.EVPLANNING_REPLANNING}...]"
+					navigationModel.isError -> "[${L.EVPLANNING_ERROR}]"
+					navigationModel.shouldReplan -> "[${L.EVPLANNING_SHOULD_REPLAN}]"
+					else -> null
+				},
+			).joinToString(" ")
 
-		val name = listOfNotNull(
-			display.title ?: L.EVPLANNING_UNKNOWN_LOC,
-			if (!navigationModel.selectedWaypointValid) {
-				"[${L.EVPLANNING_INVALID}]"
-			} else null,
-		).joinToString(" ")
+			val name = listOfNotNull(
+				wp.title ?: L.EVPLANNING_UNKNOWN_LOC,
+				if (!navigationModel.selectedWaypointValid) {
+					"[${L.EVPLANNING_INVALID}]"
+				} else null,
+			).joinToString(" ")
 
-		val nameListData = RHMIModel.RaListModel.RHMIListConcrete(3)
-		nameListData.addRow(arrayOf(icon, "", name))
+			val nameListData = RHMIModel.RaListModel.RHMIListConcrete(3)
+			nameListData.addRow(arrayOf(icon, "", name))
 
-		// prepare the title data
-		var sidePictureWidth = 0
-		val addressListData = RHMIModel.RaListModel.RHMIListConcrete(2)
-//		if (navigationEntry.sidePicture == null || navigationEntry.sidePicture.intrinsicHeight <= 0) {
-		addressListData.addRow(arrayOf("", display.address))
-//		} else {
-//			val sidePictureHeight = 96  // force the side picture to be this tall
-//			sidePictureWidth = (sidePictureHeight.toFloat() / navigationEntry.sidePicture.intrinsicHeight * navigationEntry.sidePicture.intrinsicWidth).toInt()
-//			val sidePicture = graphicsHelpers.compress(navigationEntry.sidePicture, sidePictureWidth, sidePictureHeight)
-//			titleListData.addRow(arrayOf(BMWRemoting.RHMIResourceData(BMWRemoting.RHMIResourceType.IMAGEDATA, sidePicture), navigationEntry.title + "\n"))
-//		}
-		addressWidget.setProperty(
-			RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id,
-			"$sidePictureWidth,*"
-		)
+			// prepare the title data
+			var sidePictureWidth = 0
+			val addressListData = RHMIModel.RaListModel.RHMIListConcrete(2)
+	//		if (navigationEntry.sidePicture == null || navigationEntry.sidePicture.intrinsicHeight <= 0) {
+			addressListData.addRow(arrayOf("", wp.address))
+	//		} else {
+	//			val sidePictureHeight = 96  // force the side picture to be this tall
+	//			sidePictureWidth = (sidePictureHeight.toFloat() / navigationEntry.sidePicture.intrinsicHeight * navigationEntry.sidePicture.intrinsicWidth).toInt()
+	//			val sidePicture = graphicsHelpers.compress(navigationEntry.sidePicture, sidePictureWidth, sidePictureHeight)
+	//			titleListData.addRow(arrayOf(BMWRemoting.RHMIResourceData(BMWRemoting.RHMIResourceType.IMAGEDATA, sidePicture), navigationEntry.title + "\n"))
+	//		}
+			addressWidget.setProperty(
+				RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id,
+				"$sidePictureWidth,*"
+			)
 
-		// prepare the notification text
-		val descriptionListData = RHMIModel.RaListModel.RHMIListConcrete(1)
-		val numChargers = display.num_chargers?.let {
-			if (it > 0) {
-				"${it}(${
-					display.free_chargers?.let {
-						if (it >= 0) {
-							it
-						} else null
-					} ?: "-"
-				})"
-			} else {
+			// prepare the notification text
+			val descriptionListData = RHMIModel.RaListModel.RHMIListConcrete(1)
+			val numChargers = wp.num_chargers?.let {
+				if (it > 0) {
+					"${it}(${
+						wp.free_chargers?.let {
+							if (it >= 0) {
+								it
+							} else null
+						} ?: "-"
+					})"
+				} else {
+					null
+				}
+			}
+			val dist = listOfNotNull(
+				wp.step_dst?.let { formatDistance(it) },
+				wp.trip_dst?.let { "(${formatDistance(it)})" },
+			).joinToString(" ").takeIf { it.isNotEmpty() }
+			val charger = listOfNotNull(
+				wp.operator?.let { "[${it}]" },
+				numChargers,
+				wp.charger_type?.toUpperCase(Locale.ROOT),
+			).joinToString(" ").takeIf { it.isNotEmpty() }
+			val soc = listOfNotNull(
+				wp.soc_ariv?.let { "${String.format("%.0f",wp.soc_ariv)}%" },
+				when {
+					wp.soc_planned != null && wp.soc_dep == null -> "(${String.format("%.0f",wp.soc_planned)}%)"
+					wp.soc_planned == null && wp.soc_dep != null -> "(${String.format("%.0f",wp.soc_dep)}%)"
+					wp.soc_planned != null && wp.soc_dep != null -> "(${String.format("%.0f",wp.soc_planned)}%-${String.format("%.0f",wp.soc_dep)}%)"
+					else -> null
+				},
+			).joinToString(" ").takeIf { it.isNotEmpty() }
+			val time = listOfNotNull(
+				wp.duration?.let { "${it}min" },
+				when {
+					wp.eta != null && wp.etd == null -> "${wp.eta.format(TIME_FMT)}Uhr"
+					wp.eta == null && wp.etd != null -> "${wp.etd.format(TIME_FMT)}Uhr"
+					wp.eta != null && wp.etd != null -> "${wp.eta.format(TIME_FMT)}-${
+						wp.etd.format(
+							TIME_FMT
+						)
+					}Uhr"
+					else -> null
+				}
+			).joinToString(" ").takeIf { it.isNotEmpty() }
+			val text = listOfNotNull(
+				if (wp.is_waypoint) L.EVPLANNING_WAYPOINT else null,
+				charger,
+				dist,
+				soc,
+				time,
+			).joinToString("\n")
+			descriptionListData.addRow(arrayOf(text))
+
+			state.getTextModel()?.asRaDataModel()?.value = title
+			nameWidget.getModel()?.value = nameListData
+			addressWidget.getModel()?.value = addressListData
+			descriptionWidget.getModel()?.value = descriptionListData
+
+			// try to load a picture from the notification
+			var pictureWidth = 400
+			var pictureHeight = 300
+			val pictureDrawable = try {
+	//			navigationEntry.picture ?: navigationEntry.pictureUri?.let { phoneAppResources.getUriDrawable(it) }
+			} catch (e: Exception) {
+	//			Log.w(TAG, "Failed to open picture from ${navigationEntry.pictureUri}", e)
 				null
 			}
-		}
-		val dist = listOfNotNull(
-			display.step_dst?.let { formatDistance(it) },
-			display.trip_dst?.let { "(${formatDistance(it)})" },
-		).joinToString(" ").takeIf { it.isNotEmpty() }
-		val charger = listOfNotNull(
-			display.operator?.let { "[${it}]" },
-			numChargers,
-			display.charger_type?.toUpperCase(),
-		).joinToString(" ").takeIf { it.isNotEmpty() }
-		val soc = listOfNotNull(
-			display.soc_ariv?.let { "${it}%" },
-			display.soc_dep?.let { "${it}%" },
-		).joinToString("-").takeIf { it.isNotEmpty() }
-		val time = listOfNotNull(
-			display.duration?.let { "${it}min" },
-			if (display.etd == null)
-				display.eta?.let { "${it.format(TIME_FMT)}Uhr" }
-			else
-				display.eta?.let { "${it.format(TIME_FMT)}-${display.etd.format(TIME_FMT)}Uhr" },
-		).joinToString(" ").takeIf { it.isNotEmpty() }
-
-		val text = listOfNotNull(
-			if (display.is_waypoint) L.EVPLANNING_WAYPOINT else null,
-			charger,
-			dist,
-			soc,
-			time,
-		).joinToString("\n")
-		descriptionListData.addRow(arrayOf(text))
-
-		state.getTextModel()?.asRaDataModel()?.value = title
-		nameWidget.getModel()?.value = nameListData
-		addressWidget.getModel()?.value = addressListData
-		descriptionWidget.getModel()?.value = descriptionListData
-
-		// try to load a picture from the notification
-		var pictureWidth = 400
-		var pictureHeight = 300
-		val pictureDrawable = try {
-//			navigationEntry.picture ?: navigationEntry.pictureUri?.let { phoneAppResources.getUriDrawable(it) }
-		} catch (e: Exception) {
-//			Log.w(TAG, "Failed to open picture from ${navigationEntry.pictureUri}", e)
-			null
-		}
-//		val picture = if (pictureDrawable != null && pictureDrawable.intrinsicHeight > 0) {
-//			pictureHeight = min(300, pictureDrawable.intrinsicHeight)
-//			pictureWidth = (pictureHeight.toFloat() / pictureDrawable.intrinsicHeight * pictureDrawable.intrinsicWidth).toInt()
-//			graphicsHelpers.compress(pictureDrawable, pictureWidth, pictureHeight, quality = 65)
-		//} else { null }
-		val picture = null
-		// if we have a picture to display
-		if (picture != null) {
-			// set the dimensions, ID4 clips images to this rectangle
-			imageWidget.setProperty(RHMIProperty.PropertyId.HEIGHT, pictureHeight)
-			imageWidget.setProperty(RHMIProperty.PropertyId.WIDTH, pictureWidth)
-			imageWidget.setVisible(true)
-			imageWidget.getModel()?.asRaImageModel()?.value = picture
-		} else {
-			imageWidget.setVisible(false)
+	//		val picture = if (pictureDrawable != null && pictureDrawable.intrinsicHeight > 0) {
+	//			pictureHeight = min(300, pictureDrawable.intrinsicHeight)
+	//			pictureWidth = (pictureHeight.toFloat() / pictureDrawable.intrinsicHeight * pictureDrawable.intrinsicWidth).toInt()
+	//			graphicsHelpers.compress(pictureDrawable, pictureWidth, pictureHeight, quality = 65)
+			//} else { null }
+			val picture = null
+			// if we have a picture to display
+			if (picture != null) {
+				// set the dimensions, ID4 clips images to this rectangle
+				imageWidget.setProperty(RHMIProperty.PropertyId.HEIGHT, pictureHeight)
+				imageWidget.setProperty(RHMIProperty.PropertyId.WIDTH, pictureWidth)
+				imageWidget.setVisible(true)
+				imageWidget.getModel()?.asRaImageModel()?.value = picture
+			} else {
+				imageWidget.setVisible(false)
+			}
+		} catch (t: Throwable) {
+			Sentry.capture(t)
 		}
 	}
 }
