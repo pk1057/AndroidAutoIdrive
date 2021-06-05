@@ -193,14 +193,14 @@ class DetailsView(
 			// prepare the title data
 			var sidePictureWidth = 0
 			val addressListData = RHMIModel.RaListModel.RHMIListConcrete(2)
-	//		if (navigationEntry.sidePicture == null || navigationEntry.sidePicture.intrinsicHeight <= 0) {
+			//		if (navigationEntry.sidePicture == null || navigationEntry.sidePicture.intrinsicHeight <= 0) {
 			addressListData.addRow(arrayOf("", wp.address))
-	//		} else {
-	//			val sidePictureHeight = 96  // force the side picture to be this tall
-	//			sidePictureWidth = (sidePictureHeight.toFloat() / navigationEntry.sidePicture.intrinsicHeight * navigationEntry.sidePicture.intrinsicWidth).toInt()
-	//			val sidePicture = graphicsHelpers.compress(navigationEntry.sidePicture, sidePictureWidth, sidePictureHeight)
-	//			titleListData.addRow(arrayOf(BMWRemoting.RHMIResourceData(BMWRemoting.RHMIResourceType.IMAGEDATA, sidePicture), navigationEntry.title + "\n"))
-	//		}
+			//		} else {
+			//			val sidePictureHeight = 96  // force the side picture to be this tall
+			//			sidePictureWidth = (sidePictureHeight.toFloat() / navigationEntry.sidePicture.intrinsicHeight * navigationEntry.sidePicture.intrinsicWidth).toInt()
+			//			val sidePicture = graphicsHelpers.compress(navigationEntry.sidePicture, sidePictureWidth, sidePictureHeight)
+			//			titleListData.addRow(arrayOf(BMWRemoting.RHMIResourceData(BMWRemoting.RHMIResourceType.IMAGEDATA, sidePicture), navigationEntry.title + "\n"))
+			//		}
 			addressWidget.setProperty(
 				RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id,
 				"$sidePictureWidth,*"
@@ -221,24 +221,82 @@ class DetailsView(
 					null
 				}
 			}
-			val dist = listOfNotNull(
-				wp.step_dst?.let { formatDistance(it) },
-				wp.trip_dst?.let { "(${formatDistance(it)})" },
-			).joinToString(" ").takeIf { it.isNotEmpty() }
+			val dist = when {
+				wp.step_dst == null && wp.trip_dst != null -> formatDistance(wp.trip_dst)
+				wp.step_dst != null && (wp.trip_dst == null || wp.step_dst == wp.trip_dst) -> formatDistance(
+					wp.step_dst
+				)
+				wp.step_dst != null && wp.trip_dst != null -> "${formatDistance(wp.step_dst)} (${
+					formatDistance(
+						wp.trip_dst
+					)
+				})"
+				else -> null
+			}
 			val charger = listOfNotNull(
-				wp.operator?.let { "[${it}]" },
 				numChargers,
 				wp.charger_type?.toUpperCase(Locale.ROOT),
 			).joinToString(" ").takeIf { it.isNotEmpty() }
-			val soc = listOfNotNull(
-				wp.soc_ariv?.let { "${String.format("%.0f",wp.soc_ariv)}%" },
+			val soc = if (wp.soc_ariv == null) {
 				when {
-					wp.soc_planned != null && wp.soc_dep == null -> "(${String.format("%.0f",wp.soc_planned)}%)"
-					wp.soc_planned == null && wp.soc_dep != null -> "(${String.format("%.0f",wp.soc_dep)}%)"
-					wp.soc_planned != null && wp.soc_dep != null -> "(${String.format("%.0f",wp.soc_planned)}%-${String.format("%.0f",wp.soc_dep)}%)"
+					wp.soc_planned != null && wp.soc_dep == null -> "${
+						String.format(
+							"%.0f",
+							wp.soc_planned
+						)
+					}%"
+					wp.soc_planned == null && wp.soc_dep != null -> "${
+						String.format(
+							"%.0f",
+							wp.soc_dep
+						)
+					}%"
+					wp.soc_planned != null && wp.soc_dep != null -> "${
+						String.format(
+							"%.0f",
+							wp.soc_planned
+						)
+					}%-${String.format("%.0f", wp.soc_dep)}%"
 					else -> null
-				},
-			).joinToString(" ").takeIf { it.isNotEmpty() }
+				}
+			} else {
+				when {
+					wp.soc_planned != null && wp.soc_dep == null -> "${
+						String.format(
+							"%.1f",
+							wp.soc_ariv
+						)
+					}% (${
+						String.format(
+							"%.0f",
+							wp.soc_planned
+						)
+					}%)"
+					wp.soc_planned == null && wp.soc_dep != null -> "${
+						String.format(
+							"%.1f",
+							wp.soc_ariv
+						)
+					}% (${
+						String.format(
+							"%.0f",
+							wp.soc_dep
+						)
+					}%)"
+					wp.soc_planned != null && wp.soc_dep != null -> "${
+						String.format(
+							"%.1f",
+							wp.soc_ariv
+						)
+					}% (${
+						String.format(
+							"%.0f",
+							wp.soc_planned
+						)
+					}%-${String.format("%.0f", wp.soc_dep)}%)"
+					else -> null
+				}
+			}
 			val time = listOfNotNull(
 				wp.duration?.let { "${it}min" },
 				when {
@@ -254,6 +312,7 @@ class DetailsView(
 			).joinToString(" ").takeIf { it.isNotEmpty() }
 			val text = listOfNotNull(
 				if (wp.is_waypoint) L.EVPLANNING_WAYPOINT else null,
+				wp.operator,
 				charger,
 				dist,
 				soc,
@@ -270,15 +329,15 @@ class DetailsView(
 			var pictureWidth = 400
 			var pictureHeight = 300
 			val pictureDrawable = try {
-	//			navigationEntry.picture ?: navigationEntry.pictureUri?.let { phoneAppResources.getUriDrawable(it) }
+				//			navigationEntry.picture ?: navigationEntry.pictureUri?.let { phoneAppResources.getUriDrawable(it) }
 			} catch (e: Exception) {
-	//			Log.w(TAG, "Failed to open picture from ${navigationEntry.pictureUri}", e)
+				//			Log.w(TAG, "Failed to open picture from ${navigationEntry.pictureUri}", e)
 				null
 			}
-	//		val picture = if (pictureDrawable != null && pictureDrawable.intrinsicHeight > 0) {
-	//			pictureHeight = min(300, pictureDrawable.intrinsicHeight)
-	//			pictureWidth = (pictureHeight.toFloat() / pictureDrawable.intrinsicHeight * pictureDrawable.intrinsicWidth).toInt()
-	//			graphicsHelpers.compress(pictureDrawable, pictureWidth, pictureHeight, quality = 65)
+			//		val picture = if (pictureDrawable != null && pictureDrawable.intrinsicHeight > 0) {
+			//			pictureHeight = min(300, pictureDrawable.intrinsicHeight)
+			//			pictureWidth = (pictureHeight.toFloat() / pictureDrawable.intrinsicHeight * pictureDrawable.intrinsicWidth).toInt()
+			//			graphicsHelpers.compress(pictureDrawable, pictureWidth, pictureHeight, quality = 65)
 			//} else { null }
 			val picture = null
 			// if we have a picture to display

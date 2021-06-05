@@ -258,7 +258,15 @@ class WaypointsListView(
 
 			waypointsList.getModel()?.value = if (navigationModel.isError) {
 				RHMIModel.RaListModel.RHMIListConcrete(5).apply {
-					addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "", "", ""))
+					addRow(
+						arrayOf(
+							"",
+							navigationModel.errorMessage ?: L.EVPLANNING_ERROR,
+							"",
+							"",
+							""
+						)
+					)
 				}
 			} else {
 				val waypoints = navigationModel.nextChargerWaypoints
@@ -287,11 +295,21 @@ class WaypointsListView(
 								},
 								wp.charger_type?.toUpperCase(Locale.ROOT),
 								wp.trip_dst?.let { formatDistance(it) },
-								wp.soc_ariv?.let { "${String.format("%.1f",it)}%" },
+								wp.soc_ariv?.let { "${String.format("%.1f", it)}%" },
 								when {
-									wp.soc_planned != null && wp.final_num_charges == null -> "(${String.format("%.0f",wp.soc_planned)}%)"
+									wp.soc_planned != null && wp.final_num_charges == null -> "(${
+										String.format(
+											"%.0f",
+											wp.soc_planned
+										)
+									}%)"
 									wp.soc_planned == null && wp.final_num_charges != null -> "(${wp.final_num_charges} Charges)"
-									wp.soc_planned != null && wp.final_num_charges != null -> "(${String.format("%.0f",wp.soc_planned)}%, ${wp.final_num_charges} Charges)"
+									wp.soc_planned != null && wp.final_num_charges != null -> "(${
+										String.format(
+											"%.0f",
+											wp.soc_planned
+										)
+									}%, ${wp.final_num_charges} Charges)"
 									else -> null
 								},
 							).joinToString(" ")
@@ -330,7 +348,15 @@ class WaypointsListView(
 
 			waypointsList.getModel()?.value = if (navigationModel.isError) {
 				RHMIModel.RaListModel.RHMIListConcrete(5).apply {
-					addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "", "", ""))
+					addRow(
+						arrayOf(
+							"",
+							navigationModel.errorMessage ?: L.EVPLANNING_ERROR,
+							"",
+							"",
+							""
+						)
+					)
 				}
 			} else {
 				val waypoints = navigationModel.selectedRoute
@@ -358,13 +384,11 @@ class WaypointsListView(
 									}
 								},
 								wp.charger_type?.toUpperCase(Locale.ROOT),
-								wp.step_dst?.let { formatDistance(it) },
-								when {
-									wp.soc_ariv == null && wp.soc_planned != null -> "${String.format("%.0f",wp.soc_planned)}%"
-									wp.soc_ariv != null && wp.soc_planned == null -> "${String.format("%.1f",wp.soc_ariv)}%"
-									wp.soc_ariv != null && wp.soc_planned != null -> "${String.format("%.1f",wp.soc_ariv)}% (${String.format("%.0f",wp.soc_planned)}%)"
-									else -> null
-								},
+								if (index > 0) {
+									wp.step_dst?.let { formatDistance(it) }
+								} else null,
+								wp.soc_ariv?.let { "${String.format("%.1f", it)}%" }
+									?: wp.soc_planned?.let { "${String.format("%.0f", it)}%" },
 							).joinToString(" ")
 							val trip_dst = wp.trip_dst?.let { formatDistance(it) } ?: "-"
 							val eta = wp.eta?.format(TIME_FMT) ?: "--:--"
