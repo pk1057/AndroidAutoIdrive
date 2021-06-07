@@ -36,18 +36,18 @@ class EVPlanningSettings(val capabilities: Map<String, String?>, val btStatus: B
 			AppSettings.KEYS.EVPLANNING_MAXSPEED_DRIVEMODE_ENABLE,
 	)
 
-	val stringSettings = listOf(
-			AppSettings.KEYS.EVPLANNING_MAXSPEED,
-			AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT,
-			AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO,
-			AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS,
-			AppSettings.KEYS.EVPLANNING_REFERENCE_CONSUMPTION,
-			AppSettings.KEYS.EVPLANNING_MIN_SOC_CHARGER,
-			AppSettings.KEYS.EVPLANNING_MIN_SOC_FINAL,
+	val stringSettings = mapOf(
+			AppSettings.KEYS.EVPLANNING_MAXSPEED to (40..160 step 5).map { it.toString() },
+			AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT to (40..160 step 5).map { it.toString() },
+			AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO to (40..160 step 5).map { it.toString() },
+			AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS to (40..160 step 5).map { it.toString() },
+			AppSettings.KEYS.EVPLANNING_REFERENCE_CONSUMPTION to (100..200 step 5).map { it.toString() },
+			AppSettings.KEYS.EVPLANNING_MIN_SOC_CHARGER to (10..90 step 5).map { it.toString() },
+			AppSettings.KEYS.EVPLANNING_MIN_SOC_FINAL to (10..90 step 5).map { it.toString() },
 	)
 
 	fun getSettings(): List<AppSettings.KEYS> {
-		return booleanSettings + stringSettings
+		return booleanSettings + stringSettings.keys
 	}
 
 	fun isBooleanSetting(setting: AppSettings.KEYS): Boolean {
@@ -72,5 +72,9 @@ class EVPlanningSettings(val capabilities: Map<String, String?>, val btStatus: B
 
 	fun setStringSetting(setting: AppSettings.KEYS, value: String) {
 		appSettings[setting] = value
+	}
+
+	fun getSuggestions(setting: AppSettings.KEYS): List<String> {
+		return stringSettings[setting] ?: emptyList()
 	}
 }

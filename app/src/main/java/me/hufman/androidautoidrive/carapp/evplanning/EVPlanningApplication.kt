@@ -86,7 +86,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 	val viewRoutesList: RoutesListView      // show a list of active notifications
 	val viewWaypointList: WaypointsListView      // show a list of active notifications
 	val viewDetails: DetailsView            // view a notification with actions to do
-//	val stateInput: RHMIState.PlainState    // show a reply input form
+	val stateInput: RHMIState.PlainState    // input to be used for settings etc.
 
 	// to suppress redundant calls to the listener car data being received from the car is cached to detect changes
 	var drivingMode: Int = 0
@@ -139,9 +139,9 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 			viewWaypointList = WaypointsListView(unclaimedStates.removeFirst { WaypointsListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationModelController.navigationModel, carAppImages)
 			viewDetails = DetailsView(unclaimedStates.removeFirst { DetailsView.fits(it) }, phoneAppResources, graphicsHelpers, settings, focusTriggerController, navigationModelController.navigationModel, carAppImages)
 
-//			stateInput = carApp.states.values.filterIsInstance<RHMIState.PlainState>().first {
-//				it.componentsList.filterIsInstance<RHMIComponent.Input>().isNotEmpty()
-//			}
+			stateInput = carApp.states.values.filterIsInstance<RHMIState.PlainState>().first {
+				it.componentsList.filterIsInstance<RHMIComponent.Input>().isNotEmpty()
+			}
 
 			carApp.components.values.filterIsInstance<RHMIComponent.EntryButton>().forEach {
 				it.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = viewWaypointList.state.id
@@ -299,10 +299,31 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 					showWaypointsViewFromListAction()
 				} else {
 					hideWaypointsViewFromListAction()
+					throw RHMIActionAbort()
 				}
 			}
 			onActionPlanClicked = {
 				carApplicationListener.triggerNewPlanning()
+				throw RHMIActionAbort()
+			}
+			onSettingClicked = {
+				when {
+					settings.isBooleanSetting(it) -> {
+						settings.toggleSetting(it)
+						throw RHMIActionAbort()
+					}
+					settings.isStringSetting(it) -> {
+						StringPropertyView(
+							state,
+							stateInput,
+							settings.getSuggestions(it)
+						) { value ->
+							settings.setStringSetting(it, value)
+						}
+						showStringSettingsInputFromListAction()
+					}
+					else -> throw RHMIActionAbort()
+				}
 			}
 		}
 
@@ -312,17 +333,21 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 					showDetailsViewFromListAction()
 				} else {
 					hideDetailsViewFromListAction()
+					throw RHMIActionAbort()
 				}
 			}
 			onActionPlanAlternativesClicked = {
 				carApplicationListener.triggerAlternativesPlanning()
 				navigationModelController.switchToAlternatives()
+				throw RHMIActionAbort()
 			}
 			onActionShowAlternativesClicked = {
 				navigationModelController.switchToAlternatives()
+				throw RHMIActionAbort()
 			}
 			onActionShowAllWaypointsClicked = {
 				navigationModelController.switchToAllWaypoints()
+				throw RHMIActionAbort()
 			}
 		}
 
@@ -494,6 +519,10 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 
 	fun hideWaypointsViewFromListAction() {
 		viewRoutesList.routesList.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = 0
+	}
+
+	fun showStringSettingsInputFromListAction() {
+		viewRoutesList.settingsList.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = stateInput.id
 	}
 
 	fun showDetailsViewFromListAction() {

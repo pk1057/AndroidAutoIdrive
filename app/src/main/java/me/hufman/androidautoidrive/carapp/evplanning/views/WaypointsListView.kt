@@ -188,8 +188,7 @@ class WaypointsListView(
 						WaypointListActions.SHOW_ALTERNATIVES -> onActionShowAlternativesClicked?.invoke()
 						WaypointListActions.SHOW_ALL_WAYPOINTS -> onActionShowAllWaypointsClicked?.invoke()
 					}
-				}
-				throw RHMIActionAbort()
+				} ?: throw RHMIActionAbort()
 			}
 		}
 	}

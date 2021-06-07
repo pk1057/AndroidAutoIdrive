@@ -23,6 +23,7 @@ import de.bmw.idrive.BMWRemoting
 import io.sentry.Sentry
 import me.hufman.androidautoidrive.*
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
+import me.hufman.androidautoidrive.carapp.InputState
 import me.hufman.androidautoidrive.carapp.RHMIActionAbort
 import me.hufman.androidautoidrive.carapp.RHMIListAdapter
 import me.hufman.androidautoidrive.carapp.evplanning.*
@@ -73,8 +74,12 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 	val settingsLabel: RHMIComponent.Label
 	val settingsList: RHMIComponent.List
 
+	lateinit var inputView: RHMIState
+
+	// handlers shall return true if view is changed
 	var onRoutesListClicked: ((Int) -> Unit)? = null
 	var onActionPlanClicked: (() -> Unit)? = null
+	var onSettingClicked: ((AppSettings.KEYS) -> Unit)? = null
 
 	var visible = false                 // whether the notification list is showing
 
@@ -145,6 +150,7 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 	}
 
 	fun initWidgets() { // showNavigationEntryController: ShowNavigationEntryController) {
+
 		// refresh the list when we are displayed
 		state.focusCallback = FocusCallback { focused ->
 			visible = focused
@@ -185,6 +191,8 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 					override fun onAction(index: Int, invokedBy: Int?) {
 						if (invokedBy != 2) {       // don't change the navigationEntry
 							onRoutesListClicked?.invoke(index)
+						} else {
+							throw RHMIActionAbort()
 						}
 					}
 				}
@@ -210,31 +218,25 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 			getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionListCallback { index ->
 				when(index) {
 					0 -> onActionPlanClicked?.invoke()
+					else -> throw RHMIActionAbort()
 				}
-				throw RHMIActionAbort()
 			}
 		}
 
 		if (settings.getSettings().isNotEmpty()) {
-			settingsLabel?.apply {
+			settingsLabel.apply {
 				getModel()?.asRaDataModel()?.value = L.EVPLANNING_OPTIONS
 				setVisible(true)
 				setEnabled(false)
 				setSelectable(false)
 			}
-			settingsList?.apply {
+			settingsList.apply {
 				setVisible(true)
 				setProperty(RHMIProperty.PropertyId.LIST_COLUMNWIDTH.id, "55,0,*,0,100")
 				getAction()?.asRAAction()?.rhmiActionCallback = RHMIActionListCallback { index ->
-					val setting = settingsListData.realData.getOrNull(index)
-					setting?.let {
-						if (settings.isBooleanSetting(it)) {
-							settings.toggleSetting(it)
-						} else if (settings.isStringSetting(it)) {
-							// TODO trigger input view
-						}
-					}
-					throw RHMIActionAbort()
+					settingsListData.realData.getOrNull(index)?.let {
+						onSettingClicked?.invoke(it)
+					} ?: throw RHMIActionAbort()
 				}
 			}
 		}
