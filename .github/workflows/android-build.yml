@@ -3,6 +3,7 @@ name: build  # used as the badge name
 on:
   push:
     branches: '*'
+    tags: '*'
   pull_request:
     types: [opened, synchronize]
 
@@ -160,6 +161,7 @@ jobs:
       - name: Upload to Github release
         uses: svenstaro/upload-release-action@v2
         with:
+          tag: ${{ github.ref }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file_glob: true
           file: dist/*
