@@ -165,7 +165,7 @@ class NavigationModelUpdater() {
 			}.filterNotNull()
 		}
 
-		fun parseRouteData(carData: CarData, routes: List<Route>, routeDataList: List<RouteData>): List<DisplayRoute>? {
+		fun parseRouteData(carData: CarData, routes: List<Route>, routeDataList: List<RouteData>): List<DisplayRoute> {
 			val now = LocalDateTime.now()
 			return routeDataList.filterNot {
 				it.stepIndex == null
@@ -178,7 +178,7 @@ class NavigationModelUpdater() {
 						accumulateDisplayData(
 							steps,
 							routeData.pathStepIndex,
-							routeData.existingWaypointIndices.map { it - routeData.stepIndex!! },
+							routeData.waypointIndexInfos.map { WaypointIndexInfo(it.index - routeData.stepIndex!!,it.info) },
 							start_time,
 							start_dist,
 							routeData.soc_ariv,
@@ -228,7 +228,7 @@ class NavigationModelUpdater() {
 		private fun accumulateDisplayData(
 			steps: Iterable<Step>,
 			pathStepIndex: Int?,
-			wayPointIndices: List<Int>?,
+			wayPointIndexInfos: List<WaypointIndexInfo>?,
 			start_time: Int?,
 			start_dist: Int?,
 			soc_ariv: Double?,
@@ -265,19 +265,25 @@ class NavigationModelUpdater() {
 					}
 				} ?: Pair(Int.MIN_VALUE, Int.MIN_VALUE)
 
+				val indexInfo = wayPointIndexInfos?.find { it.index == index }
+
 				acc.displayWaypoints.add(DisplayWaypoint(
-					title = nameParts?.getOrNull(1)?.takeIf { it.isNotEmpty() }
-						?: step.name?.takeIf { it.isNotEmpty() },
+					title = nameParts?.getOrNull(1)?.takeIf { it.isNotBlank() }
+						?: step.name?.takeIf { it.isNotBlank() }
+						?: indexInfo?.info?.position?.name?.takeIf { it.isNotBlank() }
+						?: indexInfo?.info?.details?.toAddressString(),
 					operator = step.charger?.network_name
 						?: operator?.takeIf { it.isNotEmpty() },
 					charger_type = step.charger_type?.let {
-						if (it.equals("0")) null else it.toUpperCase(
-							Locale.getDefault()
+						if (it == "0") null else it.toUpperCase(
+							Locale.ROOT
 						)
 					},
-					is_waypoint = wayPointIndices?.contains(index) == true,
+					is_waypoint = indexInfo != null,
 					is_initial_charger = (index == 0),
 					address = step.charger?.address
+						?: indexInfo?.info?.details?.toAddressString()
+						?: indexInfo?.info?.position?.name?.takeIf { it.isNotBlank() }
 						?: String.format("%.5f %.5f", step.lat, step.lon),
 					trip_dst = acc.trip_dst,
 					step_dst = when (index) {

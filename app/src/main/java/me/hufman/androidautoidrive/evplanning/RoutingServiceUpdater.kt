@@ -20,20 +20,23 @@ package me.hufman.androidautoidrive.evplanning
 import me.hufman.androidautoidrive.CarThread
 import me.hufman.androidautoidrive.carapp.evplanning.CarApplicationListener
 import me.hufman.androidautoidrive.carapp.evplanning.Position
+import me.hufman.androidautoidrive.carapp.evplanning.PositionDetailedInfo
 import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningDataViewModel
 
 data class CarData(
-		val position: Position = Position(),
-		val nextDestination: Position = Position(),
-		val finalDestination: Position = Position(),
-		val odometer: Int = 0,
-		val soc: Double = 0.0,
-		val drivingMode: Int = 0,
-		val speed: Int = 0,
-		val torque: Int = 0,
-		val batteryTemperatureval: Int = Int.MIN_VALUE,
-		val internalTemperature: Int = Int.MIN_VALUE,
-		val externalTemperature: Int = Int.MIN_VALUE,
+	val position: Position = Position(),
+	val nextDestination: Position = Position(),
+	val nextDestinationDetails: PositionDetailedInfo = PositionDetailedInfo(),
+	val finalDestination: Position = Position(),
+	val finalDestinationDetails: PositionDetailedInfo = PositionDetailedInfo(),
+	val odometer: Int = 0,
+	val soc: Double = 0.0,
+	val drivingMode: Int = 0,
+	val speed: Int = 0,
+	val torque: Int = 0,
+	val batteryTemperatureval: Int = Int.MIN_VALUE,
+	val internalTemperature: Int = Int.MIN_VALUE,
+	val externalTemperature: Int = Int.MIN_VALUE,
 )
 
 /*
@@ -48,9 +51,11 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 
 	var routingService: RoutingService? = null
 
-	private var position: Position = Position()
-	private var nextDestination: Position = Position()
-	private var finalDestination: Position = Position()
+	private var nextDestination = Position()
+	private var position = Position()
+	private var nextDestinationDetails = PositionDetailedInfo()
+	private var finalDestination = Position()
+	private var finalDestinationDetails = PositionDetailedInfo()
 	private var odometer: Int = 0
 	private var soc: Double = 0.0
 	private var drivingMode: Int = 0
@@ -69,8 +74,16 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 			nextDestination = position
 		}
 
+		override fun onNextDestinationDetailsChanged(info: PositionDetailedInfo) {
+			nextDestinationDetails = info
+		}
+
 		override fun onFinalDestinationChanged(position: Position) {
 			finalDestination = position
+		}
+
+		override fun onFinalDestinationDetailsChanged(info: PositionDetailedInfo) {
+			finalDestinationDetails = info
 		}
 
 		override fun onSOCChanged(soc: Double) {
@@ -121,24 +134,27 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 	private fun doUpdate() {
 		threadRouting?.post {
 			routingService?.onCarDataChanged(
-					CarData(
-							position,
-							nextDestination,
-							finalDestination,
-							odometer,
-							soc,
-							drivingMode,
-							speed,
-							torque,
-							batteryTemperature,
-							internalTemperature,
-							externalTemperature,
-					))
+				CarData(
+					position,
+					nextDestination,
+					nextDestinationDetails,
+					finalDestination,
+					finalDestinationDetails,
+					odometer,
+					soc,
+					drivingMode,
+					speed,
+					torque,
+					batteryTemperature,
+					internalTemperature,
+					externalTemperature,
+				)
+			)
 		}
 		triggerNextUpdate()
 	}
 
-	var counter: Int=0
+	var counter: Int = 0
 	fun triggerNextUpdate() {
 
 		//TODO: for debugging, remove later:

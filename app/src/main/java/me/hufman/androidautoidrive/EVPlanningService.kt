@@ -49,7 +49,7 @@ class EVPlanningService(val context: Context, val iDriveConnectionStatus: IDrive
 
 	// the updaters do the inter-thread-communication and are therefore created once and before creation and start of other threads
 	// routingServiceUpdater receives raw CarData from the carApplication and posts this to routingService on the threadRouting thread
-	val routingServiceUpdater = RoutingServiceUpdater(1000)
+	val routingServiceUpdater = RoutingServiceUpdater(2000)
 	// navigationModelUpdater receives new RoutingData from routingService and posts this to carApplication on the threadCarApp thread
 	val navigationModelUpdater = NavigationModelUpdater()
 

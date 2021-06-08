@@ -29,6 +29,7 @@ import me.hufman.androidautoidrive.evplanning.util.CheapRuler
 import me.hufman.androidautoidrive.evplanning.util.Point
 import me.hufman.androidautoidrive.evplanning.util.Units
 import me.hufman.androidautoidrive.carapp.evplanning.Position
+import me.hufman.androidautoidrive.carapp.evplanning.PositionDetailedInfo
 import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningDataViewModel
 import kotlin.math.sqrt
 
@@ -38,27 +39,39 @@ data class RoutingData(
 	val shouldReplan: Boolean
 )
 
+data class DestinationInfo(
+	val position: Position,
+	val details: PositionDetailedInfo
+)
+
+data class WaypointIndexInfo(
+	val index: Int,
+	val info: DestinationInfo,
+)
+
 data class RouteData(
 	val routeIndex: Int,
 	val stepIndex: Int? = null,
 	val pathStepIndex: Int? = null,
 	val distance: Double? = null,
 	val soc_ariv: Double? = null,
-	val existingWaypointIndices: List<Int>
+	val waypointIndexInfos: List<WaypointIndexInfo>
 ) {
 	companion object {
 		fun of(
 			position: Position,
 			soc_car: Double,
-			destinations: List<Position>,
+			destinations: List<DestinationInfo>,
 			routes: List<Route>
 		): List<RouteData> {
 			val positionRuler = RoutingService.PositionRuler.of(position)
 			val destinationsRuler =
-				destinations.map { RoutingService.PositionRuler.of(it) }.filterNotNull()
+				destinations.map { RoutingService.PositionRuler.of(it.position)?.let { ruler ->
+					Pair(ruler,it)
+				} }.filterNotNull()
 
 			return routes.mapIndexed { routeIndex, route ->
-				val existingWaypointIndices = RoutingService.getMatchingIndices(
+				val waypointIndexInfos = RoutingService.getMatchingIndexInfos(
 					destinationsRuler,
 					route,
 					RoutingService.MAX_WAYPOINT_SQUARE_DISTANCE
@@ -78,19 +91,19 @@ data class RouteData(
 							pathStepIndex = pathStepIndex,
 							distance = distance,
 							soc_ariv = soc_ariv,
-							existingWaypointIndices = existingWaypointIndices,
+							waypointIndexInfos = waypointIndexInfos,
 						)
 					} ?: RoutingService.closestStepSegmentPair(ruler, route)?.let {
 						RouteData(
 							routeIndex = routeIndex,
 							stepIndex = it.first,
 							distance = it.second,
-							existingWaypointIndices = existingWaypointIndices,
+							waypointIndexInfos = waypointIndexInfos,
 						)
 					}
 				} ?: RouteData(
 					routeIndex = routeIndex,
-					existingWaypointIndices = existingWaypointIndices,
+					waypointIndexInfos = waypointIndexInfos,
 				)
 			}
 		}
@@ -184,14 +197,14 @@ class RoutingService(
 			previous.nextDestination,
 			previous.finalDestination,
 		).filter { it.isValid() }
-		val newDestinations = setOf(
-			carData.nextDestination,
-			carData.finalDestination,
-		).filter { it.isValid() }
+		val newDestinationInfos = setOf(
+			DestinationInfo(carData.nextDestination,carData.nextDestinationDetails),
+			DestinationInfo(carData.finalDestination,carData.finalDestinationDetails),
+		).filter { it.position.isValid() }
 
 		val routes = planResult?.result?.routes
 
-		if (newDestinations.isEmpty()) {
+		if (newDestinationInfos.isEmpty()) {
 			if (previousDestinations.isNotEmpty()) {
 				resetPlanning()
 			} // else ignore if both are empty
@@ -199,18 +212,19 @@ class RoutingService(
 			if (routes == null) {
 				// no preexisting routing result:
 				shouldReplan = true
-			} else if (newDestinations.last() != previousDestinations.lastOrNull()) {
+			} else if (newDestinationInfos.last().position != previousDestinations.lastOrNull()) {
+				// TODO: suggest replan if nextDestination does not match any existing waypoint
 				// final destination has changed:
 				shouldReplan = true
 			}
 		}
 
 		val routeData = routes?.let { routesList ->
-			RouteData.of(carData.position, carData.soc, newDestinations, routesList)
+			RouteData.of(carData.position, carData.soc, newDestinationInfos, routesList)
 				.also { routeDataList ->
 					// none of the new destinations matches an existing routepoint -> replan
 					shouldReplan =
-						shouldReplan || routeDataList.none { it.existingWaypointIndices.isNotEmpty() }
+						shouldReplan || routeDataList.all { it.waypointIndexInfos.isEmpty() }
 
 					shouldReplan = shouldReplan || routeDataList.filter {
 						it.distance == null ||
@@ -223,8 +237,8 @@ class RoutingService(
 								}.let {
 									it.isNotEmpty() && // there are close routes and for all of them the soc_ariv is lower then the minimum -> replan
 											it.all {
-												if (it.existingWaypointIndices.lastOrNull()
-														?.equals(it.stepIndex!! + 1) == true
+												if (it.waypointIndexInfos.lastOrNull()
+														?.index?.equals(it.stepIndex!! + 1) == true
 												) {
 													minSocDestination
 												} else {
@@ -474,19 +488,19 @@ class RoutingService(
 				})?.second
 		}
 
-		fun getMatchingIndices(
-			rulers: List<PositionRuler>,
+		fun getMatchingIndexInfos(
+			rulerInfoPairs: List<Pair<PositionRuler,DestinationInfo>>,
 			route: Route,
 			maxSquareDistance: Double
-		): List<Int> {
-			return rulers.mapNotNull { ruler ->
+		): List<WaypointIndexInfo> {
+			return rulerInfoPairs.mapNotNull { rulerInfoPair ->
 				route.steps?.mapIndexed { stepIndex, step ->
-					Pair(stepIndex, ruler.squareDistance(step))
+					Triple(stepIndex, rulerInfoPair.first.squareDistance(step),rulerInfoPair.second)
 				}?.filter {
 					it.second < maxSquareDistance
 				}?.minWithOrNull { o1, o2 ->
 					o1.second.compareTo(o2.second)
-				}?.first
+				}?.let { WaypointIndexInfo(it.first,it.third) }
 			}
 		}
 	}

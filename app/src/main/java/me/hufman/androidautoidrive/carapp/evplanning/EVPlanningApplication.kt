@@ -44,10 +44,44 @@ import java.util.*
 const val TAG = "EVPlanning"
 const val HMI_CONTEXT_THRESHOLD = 5000L
 
-data class Position(val latitude: Double = Double.NaN, val longitude: Double = Double.NaN) {
+data class Position(
+	val latitude: Double = Double.NaN,
+	val longitude: Double = Double.NaN,
+	val name: String? = null
+) {
 	fun isValid(): Boolean {
 		// the car sends 0.0/0.0 if a destination is chosen but routing not yet activated
 		return !(latitude.isNaN() || longitude.isNaN() || (latitude == 0.0 && longitude == 0.0))
+	}
+}
+
+data class PositionDetailedInfo(
+	val street: String? = null,
+	val houseNumber: String? = null,
+	val crossStreet: String? = null,
+	val city: String? = null,
+	val country: String? = null,
+) {
+	fun toAddressString(): String? {
+
+		return sequenceOf(
+			sequenceOf(
+				street,
+				houseNumber,
+			)
+				.filterNot { it.isNullOrBlank() }
+				.joinToString(" "),
+			crossStreet,
+			city,
+			country,
+		)
+			.filterNot { it.isNullOrBlank() }
+			.joinToString(", " ) {
+				it!!.splitToSequence("\\s+").map { word ->
+					word.toLowerCase(Locale.ROOT).capitalize(Locale.ROOT)
+				}.joinToString( " " )
+			}
+			.takeIf { it.isNotEmpty() }
 	}
 }
 
@@ -55,7 +89,9 @@ interface CarApplicationListener {
 
 	fun onPositionChanged(position: Position)
 	fun onNextDestinationChanged(position: Position)
+	fun onNextDestinationDetailsChanged(info: PositionDetailedInfo)
 	fun onFinalDestinationChanged(position: Position)
+	fun onFinalDestinationDetailsChanged(info: PositionDetailedInfo)
 	fun onSOCChanged(soc: Double)
 	fun onDrivingModeChanged(drivingMode: Int)
 	fun onOdometerChanged(odometer: Int)
@@ -93,9 +129,11 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 	var odometer: Int = 0
 	var speed: Int = 0
 	var torque: Int = 0
-	var position: Position = Position(0.0, 0.0)
-	var nextDestination: Position = Position(0.0, 0.0)
-	var finalDestination: Position = Position(0.0, 0.0)
+	var position = Position(0.0, 0.0)
+	var nextDestination = Position(0.0, 0.0)
+	var nextDestinationDetailedInfo = PositionDetailedInfo()
+	var finalDestination = Position(0.0, 0.0)
+	var finalDestinationDetailedInfo = PositionDetailedInfo()
 	var batteryTemperature: Int = Int.MIN_VALUE
 	var socBattery: Double = 0.0
 	var externalTemperature: Int = Int.MIN_VALUE
@@ -221,6 +259,16 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 					}
 				}
 			}
+			cdsData.subscriptions[CDS.NAVIGATION.NEXTDESTINATIONDETAILEDINFO] = {
+				it["nextDestinationDetailedInfo"]?.let { dest ->
+					Gson().fromJson(dest, PositionDetailedInfo::class.java)
+				}?.let { info ->
+					if (info != nextDestinationDetailedInfo) {
+						nextDestinationDetailedInfo = info
+						carApplicationListener.onNextDestinationDetailsChanged(info)
+					}
+				}
+			}
 			cdsData.subscriptions[CDS.NAVIGATION.FINALDESTINATION] = {
 				it["finalDestination"]?.let { dest ->
 					Gson().fromJson(dest, Position::class.java)
@@ -228,6 +276,16 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 					if (destination != finalDestination) {
 						finalDestination = destination
 						carApplicationListener.onFinalDestinationChanged(destination)
+					}
+				}
+			}
+			cdsData.subscriptions[CDS.NAVIGATION.FINALDESTINATIONDETAILEDINFO] = {
+				it["finalDestinationDetailedInfo"]?.let { dest ->
+					Gson().fromJson(dest, PositionDetailedInfo::class.java)
+				}?.let { info ->
+					if (info != finalDestinationDetailedInfo) {
+						finalDestinationDetailedInfo = info
+						carApplicationListener.onFinalDestinationDetailsChanged(info)
 					}
 				}
 			}
