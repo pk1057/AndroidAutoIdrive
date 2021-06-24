@@ -14,6 +14,7 @@ import me.hufman.androidautoidrive.carapp.assistant.AssistantControllerAndroid
 import me.hufman.androidautoidrive.carapp.assistant.AssistantApp
 import me.hufman.androidautoidrive.carapp.maps.MapAppMode
 import me.hufman.androidautoidrive.carapp.music.MusicAppMode
+import me.hufman.androidautoidrive.connections.BclStatusListener
 import me.hufman.androidautoidrive.connections.BtStatus
 import me.hufman.androidautoidrive.phoneui.*
 import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningDataViewModel
@@ -35,6 +36,7 @@ class MainService: Service() {
 		const val EXTRA_FOREGROUND = "EXTRA_FOREGROUND"
 
 		const val PROBE_TIMEOUT: Long = 2 * 60 * 1000
+		const val STARTUP_DEBOUNCE = 1500
 	}
 
 	val ONGOING_NOTIFICATION_ID = 20503
@@ -61,6 +63,12 @@ class MainService: Service() {
 
 	var threadAssistant: CarThread? = null
 	var carappAssistant: AssistantApp? = null
+
+	// reschedule a combinedCallback to make sure enough time has passed
+	var connectionTime: Long? = null
+	val combinedCallbackRunnable = Runnable {
+		combinedCallback()
+	}
 
 	// shut down probing after a timeout
 	val handler = Handler()
@@ -245,6 +253,16 @@ class MainService: Service() {
 		synchronized(MainService::class.java) {
 			handler.removeCallbacks(shutdownTimeout)
 			if (iDriveConnectionReceiver.isConnected && securityAccess.isConnected()) {
+				if (connectionTime == null) {
+					connectionTime = System.currentTimeMillis()
+				}
+				// wait until it's connected long enough
+				if (System.currentTimeMillis() - (connectionTime ?: 0) < STARTUP_DEBOUNCE) {
+					handler.removeCallbacks(combinedCallbackRunnable)
+					handler.postDelayed(combinedCallbackRunnable, 1000)
+					return
+				}
+
 				var startAny = false
 
 				AppSettings.loadSettings(applicationContext)
@@ -298,6 +316,7 @@ class MainService: Service() {
 				DonationRequest(this).countUsage()
 			} else {
 				Log.d(TAG, "Not fully connected: IDrive:${iDriveConnectionReceiver.isConnected} SecurityService:${securityAccess.isConnected()}")
+				connectionTime = null
 				stopCarApps()
 				handler.postDelayed(shutdownTimeout, PROBE_TIMEOUT)
 				handler.post(btfetchUuidsWithSdp)
