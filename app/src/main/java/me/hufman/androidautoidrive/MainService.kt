@@ -14,7 +14,6 @@ import me.hufman.androidautoidrive.carapp.assistant.AssistantControllerAndroid
 import me.hufman.androidautoidrive.carapp.assistant.AssistantApp
 import me.hufman.androidautoidrive.carapp.maps.MapAppMode
 import me.hufman.androidautoidrive.carapp.music.MusicAppMode
-import me.hufman.androidautoidrive.connections.BclStatusListener
 import me.hufman.androidautoidrive.connections.BtStatus
 import me.hufman.androidautoidrive.phoneui.*
 import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningDataViewModel
@@ -86,10 +85,10 @@ class MainService: Service() {
 	val btfetchUuidsWithSdp: Runnable by lazy { Runnable {
 		handler.removeCallbacks(btfetchUuidsWithSdp)
 		if (!iDriveConnectionReceiver.isConnected) {
-			btStatus.fetchUuidsWithSdp()
-
-			// schedule as long as the car is connected
 			if (btStatus.isA2dpConnected) {
+				btStatus.fetchUuidsWithSdp()
+
+				// schedule as long as the car is connected
 				handler.postDelayed(btfetchUuidsWithSdp, 5000)
 			}
 		}
@@ -126,9 +125,6 @@ class MainService: Service() {
 	override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 		Analytics.init(applicationContext)
 
-		// load the emoji dictionary
-		UnicodeCleaner.init(applicationContext)
-
 		val action = intent?.action ?: ""
 		if (action == ACTION_START) {
 			handleActionStart()
@@ -161,7 +157,7 @@ class MainService: Service() {
 	 * Start the service
 	 */
 	private fun handleActionStart() {
-		Log.i(TAG, "Starting up service")
+		Log.i(TAG, "Starting up service $this")
 		// show the notification, so we can be startForegroundService'd
 		createNotificationChannel()
 		startServiceNotification(iDriveConnectionReceiver.brand, ChassisCode.fromCode(carInformationObserver.capabilities["vehicle.type"] ?: "Unknown"))
@@ -253,6 +249,12 @@ class MainService: Service() {
 		synchronized(MainService::class.java) {
 			handler.removeCallbacks(shutdownTimeout)
 			if (iDriveConnectionReceiver.isConnected && securityAccess.isConnected()) {
+				// make sure we are subscribed for an instance id
+				if ((iDriveConnectionReceiver.instanceId ?: -1) <= 0) {
+					iDriveConnectionReceiver.subscribe(applicationContext)
+				}
+
+				// record when we first see the connection
 				if (connectionTime == null) {
 					connectionTime = System.currentTimeMillis()
 				}
@@ -285,6 +287,7 @@ class MainService: Service() {
 				if (appSettings[AppSettings.KEYS.PREFER_CAR_LANGUAGE].toBoolean() &&
 						carInformationObserver.cdsData[CDS.VEHICLE.LANGUAGE] == null) {
 					// still waiting for language
+					Log.d(TAG, "Waiting for the car's language to be confirmed")
 				} else {
 					// start my app
 					startAny = startAny or startEVPlanning()
@@ -319,7 +322,7 @@ class MainService: Service() {
 				connectionTime = null
 				stopCarApps()
 				handler.postDelayed(shutdownTimeout, PROBE_TIMEOUT)
-				handler.post(btfetchUuidsWithSdp)
+				handler.postDelayed(btfetchUuidsWithSdp, 5000)
 			}
 		}
 		carInformationUpdater.isConnected = iDriveConnectionReceiver.isConnected && securityAccess.isConnected()
@@ -327,7 +330,8 @@ class MainService: Service() {
 
 	fun startCarCapabilities(): Boolean {
 		synchronized(this) {
-			if (threadCapabilities == null) {
+			if (threadCapabilities?.isAlive != true) {
+				Log.d(TAG, "Starting CarCapabilities thread")
 				// clear the capabilities to not start dependent services until it's ready
 				threadCapabilities = CarThread("Capabilities") {
 					Log.i(TAG, "Starting to discover car capabilities")
