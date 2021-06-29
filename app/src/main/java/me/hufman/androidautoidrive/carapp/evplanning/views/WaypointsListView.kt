@@ -29,7 +29,6 @@ import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Comp
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistance
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatTimeDifference
 import me.hufman.androidautoidrive.carapp.evplanning.TAG
-import me.hufman.androidautoidrive.evplanning.DisplayWaypoint
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.idriveconnectionkit.rhmi.*
 import java.util.*

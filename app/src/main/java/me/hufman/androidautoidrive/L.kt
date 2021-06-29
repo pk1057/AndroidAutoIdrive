@@ -105,6 +105,21 @@ object L {
 	var EVPLANNING_MIN_SOC_CHARGER = "Minimum SOC at Charger"
 	var EVPLANNING_MIN_SOC_FINAL = "Minimum SOC at Destination"
 
+	var EVPLANNING_ACTION_AVOID_CHARGER = "Avoid this Charger"
+	var EVPLANNING_ACTION_ALLOW_CHARGER = "Allow this Charger"
+	var EVPLANNING_CHARGER_AVOIDED = "Avoided"
+
+	var EVPLANNING_OPERATOR = "Network"
+	var EVPLANNING_OPERATOR_ACTION_PREFER_EXCLUSIVE = "Prefer %s Exclusive"
+	var EVPLANNING_OPERATOR_ACTION_EXCLUSIVE = "Use %s Exclusive"
+	var EVPLANNING_OPERATOR_ACTION_PREFER = "Prefer %s"
+	var EVPLANNING_OPERATOR_ACTION_DONTCARE = "Normal Priority for %s"
+	var EVPLANNING_OPERATOR_ACTION_AVOID = "Avoid %s"
+	var EVPLANNING_OPERATOR_PREFERRED_EXCLUSIVE = "Preferred Exclusive"
+	var EVPLANNING_OPERATOR_EXCLUSIVE = "Exclusive"
+	var EVPLANNING_OPERATOR_PREFERRED = "Preferred"
+	var EVPLANNING_OPERATOR_AVOIDED = "Avoided"
+
 	fun loadResources(context: Context, locale: Locale? = null) {
 		val thisContext = if (locale == null) { context } else {
 			val origConf = context.resources.configuration

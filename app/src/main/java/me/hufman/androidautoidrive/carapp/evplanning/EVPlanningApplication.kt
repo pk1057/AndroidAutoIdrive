@@ -27,6 +27,7 @@ import de.bmw.idrive.BaseBMWRemotingClient
 import me.hufman.androidautoidrive.*
 import me.hufman.androidautoidrive.carapp.*
 import me.hufman.androidautoidrive.carapp.evplanning.views.*
+import me.hufman.androidautoidrive.evplanning.NetworkPreference
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.androidautoidrive.utils.Utils
 import me.hufman.androidautoidrive.utils.removeFirst
@@ -103,6 +104,8 @@ interface CarApplicationListener {
 
 	fun triggerNewPlanning()
 	fun triggerAlternativesPlanning()
+	//TODO: not yet used:
+	fun triggerCheckReloadDetails()
 }
 
 class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, val securityAccess: SecurityAccess, val carAppAssets: CarAppResources, val carAppAssetsIcons: CarAppResources, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers, private val carApplicationListener: CarApplicationListener, val settings: EVPlanningSettings, val navigationModelController: NavigationModelController) {
@@ -121,7 +124,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 	// carapp views
 	val viewRoutesList: RoutesListView      // show a list of active notifications
 	val viewWaypointList: WaypointsListView      // show a list of active notifications
-	val viewDetails: DetailsView            // view a notification with actions to do
+	val viewWaypointDetails: WaypointDetailsView            // view a notification with actions to do
 	val stateInput: RHMIState.PlainState    // input to be used for settings etc.
 
 	// to suppress redundant calls to the listener car data being received from the car is cached to detect changes
@@ -175,7 +178,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 			// figure out which views to use
 			viewRoutesList = RoutesListView(unclaimedStates.removeFirst { RoutesListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationModelController.navigationModel, carAppImages)
 			viewWaypointList = WaypointsListView(unclaimedStates.removeFirst { WaypointsListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationModelController.navigationModel, carAppImages)
-			viewDetails = DetailsView(unclaimedStates.removeFirst { DetailsView.fits(it) }, phoneAppResources, graphicsHelpers, settings, focusTriggerController, navigationModelController.navigationModel, carAppImages)
+			viewWaypointDetails = WaypointDetailsView(unclaimedStates.removeFirst { WaypointDetailsView.fits(it) }, phoneAppResources, graphicsHelpers, settings, focusTriggerController, navigationModelController.navigationModel, carAppImages)
 
 			stateInput = carApp.states.values.filterIsInstance<RHMIState.PlainState>().first {
 				it.componentsList.filterIsInstance<RHMIComponent.Input>().isNotEmpty()
@@ -198,7 +201,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 			viewWaypointList.initWidgets()
 
 			// set up the details view
-			viewDetails.initWidgets(viewWaypointList) //, stateInput)
+			viewWaypointDetails.initWidgets(viewWaypointList) //, stateInput)
 
 			// subscribe to CDS for passenger seat info
 			cdsData.setConnection(CDSConnectionEtch(carConnection))
@@ -347,7 +350,15 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 			}
 
 			selectedWaypointObserver = {
-				viewDetails.redraw()
+				viewWaypointDetails.redraw()
+			}
+
+			ignoredChargersObserver = {
+				viewWaypointDetails.redraw()
+			}
+
+			networkPreferencesObserver = {
+				viewWaypointDetails.redraw()
 			}
 		}
 
@@ -409,9 +420,23 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 			}
 		}
 
-		with(viewDetails) {
+		with(viewWaypointDetails) {
 			onAddressClicked = {
 				navigationModelController.navigateToWaypoint()
+			}
+			onActionAvoidChargerClicked = { avoid ->
+				navigationModel.selectedWaypoint?.charger_id?.let { id ->
+					if (avoid) {
+						settings.addIgnoreCharger(id)
+					} else {
+						settings.removeIgnoreCharger(id)
+					}
+				}
+			}
+			onActionOperatorPreferenceClicked = { preference ->
+				navigationModel.selectedWaypoint?.operator_id?.let { id ->
+					settings.setNetworkPreference(id,preference)
+				}
 			}
 		}
 	}
@@ -584,7 +609,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 	}
 
 	fun showDetailsViewFromListAction() {
-		viewWaypointList.waypointsList.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = viewDetails.state.id
+		viewWaypointList.waypointsList.getAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = viewWaypointDetails.state.id
 	}
 
 	fun hideDetailsViewFromListAction() {

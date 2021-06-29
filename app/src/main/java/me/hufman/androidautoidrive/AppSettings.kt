@@ -59,6 +59,8 @@ interface AppSettings {
 		EVPLANNING_REFERENCE_CONSUMPTION("EVPlanning_Reference_Consumption", "165", "Reference Consumption"),
 		EVPLANNING_MIN_SOC_CHARGER("EvPlanning_Min_SOC_Charger", "10", "Minimum SOC when arriving at charger"),
 		EVPLANNING_MIN_SOC_FINAL("EvPlanning_Min_SOC_Dest", "10", "Minimum SOC when arriving at destination"),
+		EVPLANNING_IGNORE_CHARGERS("EVPlanning_Ignore_Chargers", "[]", "ids of chargers to be ignored"),
+		EVPLANNING_NETWORK_PREFERENCES("EVPlanning_Network_Preferences","{}","Priorities of charging-networks"),
 	}
 
 	/** Store the active preferences in a singleton */

@@ -23,7 +23,6 @@ import de.bmw.idrive.BMWRemoting
 import io.sentry.Sentry
 import me.hufman.androidautoidrive.*
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
-import me.hufman.androidautoidrive.carapp.InputState
 import me.hufman.androidautoidrive.carapp.RHMIActionAbort
 import me.hufman.androidautoidrive.carapp.RHMIListAdapter
 import me.hufman.androidautoidrive.carapp.evplanning.*
@@ -31,8 +30,7 @@ import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Comp
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistanceDetailed
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatTime
 import me.hufman.androidautoidrive.carapp.evplanning.TAG
-import me.hufman.androidautoidrive.evplanning.DisplayRoute
-import me.hufman.androidautoidrive.evplanning.RoutingService.Companion.MAX_STEP_OFFSET
+import me.hufman.androidautoidrive.evplanning.RouteData.Companion.MAX_STEP_OFFSET
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.idriveconnectionkit.rhmi.*
 import kotlin.reflect.KClass
@@ -91,7 +89,7 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 	var lastInteractionIndex: Int = -1       // what index the user last selected
 
 	val emptyListData = RHMIModel.RaListModel.RHMIListConcrete(3).apply {
-		addRow(arrayOf("", L.EVPLANNING_EMPTY_LIST, "",))
+		addRow(arrayOf("", L.EVPLANNING_EMPTY_LIST, ""))
 	}
 
 	val iconFlag: ByteArray?
@@ -289,7 +287,7 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 
 			routesList.getModel()?.value = if (navigationModel.isError) {
 				RHMIModel.RaListModel.RHMIListConcrete(3).apply {
-					addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, "",))
+					addRow(arrayOf("", navigationModel.errorMessage ?: L.EVPLANNING_ERROR, ""))
 				}
 			} else {
 				val routes = navigationModel.displayRoutes
@@ -298,21 +296,21 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 				} else {
 					//5 columns: icon, title, dist, soc, eta
 					object : RHMIListAdapter<DisplayRoute>(3, routes) {
-						override fun convertRow(index: Int, route: DisplayRoute): Array<Any> {
-							val icon = if (route.contains_waypoint) iconFlag ?: "" else ""
+						override fun convertRow(index: Int, item: DisplayRoute): Array<Any> {
+							val icon = if (item.contains_waypoint) iconFlag ?: "" else ""
 							val addition = when {
 								!navigationModel.displayRoutesValid -> "[${L.EVPLANNING_INVALID}]"
-								route.deviation != null && route.deviation > MAX_STEP_OFFSET -> "${L.EVPLANNING_OFFSET}: ${formatDistanceDetailed(route.deviation)}"
+								item.deviation != null && item.deviation > MAX_STEP_OFFSET -> "${L.EVPLANNING_OFFSET}: ${formatDistanceDetailed(item.deviation)}"
 								else -> null
 							}
 							val firstLine = listOfNotNull(
-								route.trip_dst?.let { formatDistance(it) },
-								route.arrival_duration?.let { "(${formatTime(it)}h)" },
+								item.trip_dst?.let { formatDistance(it) },
+								item.arrival_duration?.let { "(${formatTime(it)}h)" },
 								addition,
 							).joinToString(" ")
 							val secondLine = listOfNotNull(
-								route.num_charges?.let { "${it} charges" },
-								route.charge_duration?.let { "(${formatTime(it)}h)" },
+								item.num_charges?.let { "$it charges" },
+								item.charge_duration?.let { "(${formatTime(it)}h)" },
 							).joinToString(" ")
 							return arrayOf(icon, "", "${firstLine}\n${secondLine}")
 						}
@@ -325,10 +323,10 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 	}
 
 	fun redrawSettingsList() {
-		settingsList?.getModel()?.value = settingsListData
+		settingsList.getModel()?.value = settingsListData
 	}
 
 	fun redrawActionsList() {
-		actionsList?.getModel()?.value = actionsListData
+		actionsList.getModel()?.value = actionsListData
 	}
 }

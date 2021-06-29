@@ -30,7 +30,9 @@ data class NetworkResultMetadata(
 )
 
 data class Network(
-        val id: Long?,           // 1
-        val name: String?,       // "Tesla"
+        val id: Long?,          // 1
+        val name: String?,      // "Tesla"
         val icon_path: String?, // null - "tesla.png"
+		val replaced_by: Long?,
+        val has_chargers: Int?,
 )

@@ -129,14 +129,44 @@ data class Charger(
 		val status: String,                   // "OPEN", "CONSTRUCTION" (not yet open), "CLOSED", "LIMITED"
 		val region: String?,                  // "region": "europe",
 		val country_3: String?,               // "DEU"
-		val network_id: Int?,                 // "network_id": 85,
+		val network_id: Long?,                 // "network_id": 85,
 		val network_name: String?,            // "network_name": "Ionity",
 		val network_icon: String?,            // null - "ionity.png"
 		val source_attribution_logo: String?, // "https://abetterrouteplanner.com/icon/ionity_logo.png"
 		val source_attribution_url: String?,  // "https://ionity.eu",
 		val outlets: List<Outlet>?,           //
-		val locationid: String?,              // "locationid": "ionity_8769da75-24f9-476d-b29d-08fc7fe371a4"
-)
+		val locationid: String?,               // "locationid": "ionity_8769da75-24f9-476d-b29d-08fc7fe371a4"
+) {
+	companion object {
+		fun of(charger: me.hufman.androidautoidrive.evplanning.iternio.dto.Charger): Charger {
+			return Charger(
+					charger.name,
+					charger.id,
+					charger.address,
+					charger.lat ?: 0.0,
+					charger.lon ?: 0.0,
+					charger.url,
+					charger.comment,
+					charger.status,
+					charger.region,
+					charger.country_3,
+					charger.network_id,
+					charger.network_name,
+					charger.network_icon,
+					charger.source_attribution_logo,
+					charger.source_attribution_url,
+					charger.outlets?.mapNotNull { outlet ->
+						with(outlet) {
+							if (type != null || stalls != null || power != null || status != null) {
+								Outlet(type, stalls, power, status)
+							} else null
+						}
+					},
+					charger.locationid
+			)
+		}
+	}
+}
 
 data class Outlet(
 		val type: String?,          // "type": "ccs",
@@ -213,35 +243,7 @@ fun toStep(step: me.hufman.androidautoidrive.evplanning.iternio.dto.Step, indice
 				step.charge_cost,
 				step.charge_cost_currency,
 				step.charge_profile,
-				step.charger?.let { charger ->
-					if (charger.lat != null && charger.lon != null) {
-						Charger(
-								charger.name,
-								charger.id,
-								charger.address,
-								charger.lat,
-								charger.lon,
-								charger.url,
-								charger.comment,
-								charger.status,
-								charger.region,
-								charger.country_3,
-								charger.network_id,
-								charger.network_name,
-								charger.network_icon,
-								charger.source_attribution_logo,
-								charger.source_attribution_url,
-								charger.outlets?.mapNotNull { outlet ->
-									with(outlet) {
-										if (type != null || stalls != null || power != null || status != null) {
-											Outlet(type, stalls, power, status)
-										} else null
-									}
-								},
-								charger.locationid
-						)
-					} else null
-				},
+				step.charger?.let {	Charger.of(it)	},
 				step.drive_duration,
 				step.wait_duration,
 				step.drive_dist,
@@ -345,35 +347,7 @@ fun toResult(planResult: me.hufman.androidautoidrive.evplanning.iternio.dto.Plan
 													step.charge_cost,
 													step.charge_cost_currency,
 													step.charge_profile,
-													step.charger?.let { charger ->
-														if (charger.lat != null && charger.lon != null) {
-															Charger(
-																	charger.name,
-																	charger.id,
-																	charger.address,
-																	charger.lat,
-																	charger.lon,
-																	charger.url,
-																	charger.comment,
-																	charger.status,
-																	charger.region,
-																	charger.country_3,
-																	charger.network_id,
-																	charger.network_name,
-																	charger.network_icon,
-																	charger.source_attribution_logo,
-																	charger.source_attribution_url,
-																	charger.outlets?.mapNotNull { outlet ->
-																		with(outlet) {
-																			if (type != null && stalls != null && power != null && status != null) {
-																				Outlet(type, stalls, power, status)
-																			} else null
-																		}
-																	},
-																	charger.locationid
-															)
-														} else null
-													},
+													step.charger?.let { Charger.of(it) },
 													step.drive_duration,
 													step.wait_duration,
 													step.drive_dist,

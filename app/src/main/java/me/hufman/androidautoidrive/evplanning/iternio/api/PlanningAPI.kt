@@ -56,12 +56,17 @@ interface PlanningAPI {
             @Header("Authorization") authorization: String): Call<VehicleLibraryResult>
 
     @GET("1/get_chargers")
-    fun getChargers(@Field("lat") lat: Double,
-                    @Field("lon") lon: Double,
-                    @Field("radius") radius: Double,                 // radius in meters
-                    @Field("types") types: String,                   // ccs,type2 - comma-separated list of outlet-types
-                    @Field("limit") limit: Int,                      // maximum number of results
-                    @Field("allowed_dbs") allowedDbs: String,        // optional, unconfirmed though...
+    fun getChargers(@Query("lat") lat: Double?,                       // either lat,lon,radius,types,limit or ids, not both
+                    @Query("lon") lon: Double?,
+                    @Query("radius") radius: Double?,                 // radius in meters
+                    @Query("types") types: String?,                   // ccs,type2 - comma-separated list of outlet-types
+                    @Query("limit") limit: Int?,                      // maximum number of results
+                    @Query("allowed_dbs") allowedDbs: String?,        // optional, unconfirmed though...
+                    @Query("ids") ids: String?,                       // comma-separated list of charger-ids
+                    @Query("get_amenities") get_amenities: Boolean = false,
+                    @Query("amenity_maxdist") amenity_maxdist: String?,
+                    @Query("amenity_categories") amenity_categories: String?,
+                    @Query("amenity_foodtypes") amenity_foodtypes: String?,
                     @Header("Authorization") authorization: String): Call<ChargersResult>
 
     @GET("1/get_outlet_types")

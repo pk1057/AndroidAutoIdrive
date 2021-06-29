@@ -20,6 +20,11 @@ package me.hufman.androidautoidrive.carapp.evplanning
 import me.hufman.androidautoidrive.AppSettings
 import me.hufman.androidautoidrive.MutableAppSettingsObserver
 import me.hufman.androidautoidrive.connections.BtStatus
+import me.hufman.androidautoidrive.evplanning.NetworkPreference
+import me.hufman.androidautoidrive.evplanning.PreferenceUtils.Companion.addLongJsonString
+import me.hufman.androidautoidrive.evplanning.PreferenceUtils.Companion.removeLongJsonString
+import me.hufman.androidautoidrive.evplanning.PreferenceUtils.Companion.setNetworkPreferenceJsonString
+import java.util.*
 
 class EVPlanningSettings(val capabilities: Map<String, String?>, val btStatus: BtStatus, val appSettings: MutableAppSettingsObserver) {
 	var callback
@@ -29,7 +34,7 @@ class EVPlanningSettings(val capabilities: Map<String, String?>, val btStatus: B
 		}
 
 	// car's supported features
-	val tts = capabilities["tts"]?.toLowerCase() == "true"
+	val tts = capabilities["tts"]?.toLowerCase(Locale.ROOT) == "true"
 
 	val booleanSettings = listOf(
 			AppSettings.KEYS.EVPLANNING_AUTO_REPLAN,
@@ -37,13 +42,13 @@ class EVPlanningSettings(val capabilities: Map<String, String?>, val btStatus: B
 	)
 
 	val stringSettings = mapOf(
-			AppSettings.KEYS.EVPLANNING_MAXSPEED to (40..160 step 5).map { it.toString() },
-			AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT to (40..160 step 5).map { it.toString() },
-			AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO to (40..160 step 5).map { it.toString() },
-			AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS to (40..160 step 5).map { it.toString() },
-			AppSettings.KEYS.EVPLANNING_REFERENCE_CONSUMPTION to (100..200 step 5).map { it.toString() },
-			AppSettings.KEYS.EVPLANNING_MIN_SOC_CHARGER to (10..90 step 5).map { it.toString() },
-			AppSettings.KEYS.EVPLANNING_MIN_SOC_FINAL to (10..90 step 5).map { it.toString() },
+		AppSettings.KEYS.EVPLANNING_MAXSPEED to (40..160 step 5).map { it.toString() },
+		AppSettings.KEYS.EVPLANNING_MAXSPEED_COMFORT to (40..160 step 5).map { it.toString() },
+		AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO to (40..160 step 5).map { it.toString() },
+		AppSettings.KEYS.EVPLANNING_MAXSPEED_ECO_PRO_PLUS to (40..160 step 5).map { it.toString() },
+		AppSettings.KEYS.EVPLANNING_REFERENCE_CONSUMPTION to (100..200 step 5).map { it.toString() },
+		AppSettings.KEYS.EVPLANNING_MIN_SOC_CHARGER to (10..90 step 5).map { it.toString() },
+		AppSettings.KEYS.EVPLANNING_MIN_SOC_FINAL to (10..90 step 5).map { it.toString() },
 	)
 
 	fun getSettings(): List<AppSettings.KEYS> {
@@ -76,5 +81,30 @@ class EVPlanningSettings(val capabilities: Map<String, String?>, val btStatus: B
 
 	fun getSuggestions(setting: AppSettings.KEYS): List<String> {
 		return stringSettings[setting] ?: emptyList()
+	}
+
+	fun addIgnoreCharger(id: Long) {
+		appSettings[AppSettings.KEYS.EVPLANNING_IGNORE_CHARGERS] =
+			addLongJsonString(
+				appSettings[AppSettings.KEYS.EVPLANNING_IGNORE_CHARGERS],
+				id
+			)
+	}
+
+	fun removeIgnoreCharger(id: Long) {
+		appSettings[AppSettings.KEYS.EVPLANNING_IGNORE_CHARGERS] =
+			removeLongJsonString(
+				appSettings[AppSettings.KEYS.EVPLANNING_IGNORE_CHARGERS],
+				id
+			)
+	}
+
+	fun setNetworkPreference(id: Long, preference: NetworkPreference) {
+		appSettings[AppSettings.KEYS.EVPLANNING_NETWORK_PREFERENCES] =
+			setNetworkPreferenceJsonString(
+				appSettings[AppSettings.KEYS.EVPLANNING_NETWORK_PREFERENCES],
+				id,
+				preference
+			)
 	}
 }

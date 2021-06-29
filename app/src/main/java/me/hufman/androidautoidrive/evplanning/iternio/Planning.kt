@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package me.hufman.androidautoidrive.evplanning.iternio
 
 import com.truchsess.evrouting.iternio.dto.VehicleLibraryResult
+import io.sentry.Sentry
 import me.hufman.androidautoidrive.evplanning.iternio.api.PlanningAPI
 import me.hufman.androidautoidrive.evplanning.iternio.dto.ChargersResult
 import me.hufman.androidautoidrive.evplanning.iternio.dto.NetworksResult
@@ -30,7 +31,19 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-data class GetChargerArgs(val lat: Double, val lon: Double, val radius: Double, val types: String, val limit: Int, val allowedDbs: String)
+data class GetChargerArgs(
+        val lat: Double? = null,
+        val lon: Double? = null,
+        val radius: Double? = null,
+        val types: List<String>? = null,
+        val limit: Int? = null,
+        val allowedDbs: List<String>? = null,
+        val ids: List<Long>? = null,
+        val getAmenities: Boolean = false,
+        val amenityMaxDist: Double? = null,
+        val amenityCateories: List<String>? = null,
+        val amenityFoodTypes: List<String>? = null,
+)
 
 interface Planning {
 
@@ -52,19 +65,31 @@ class PlanningImpl(baseUrl: String, private val authorization: String) : Plannin
     private val planningApi: PlanningAPI = PlanningAPI.create(baseUrl)
 
     private fun <R> apiCall(apiFun: () -> Call<R>, onSuccess: (R) -> Unit, onError: (String) -> Unit) {
-        apiFun().enqueue(object : Callback<R> {
-            override fun onResponse(call: Call<R>, response: Response<R>) {
-                val body: R? = response.body()
-                if (response.isSuccessful && body != null) {
-                    onSuccess(body)
-                } else {
-                    response.errorBody()?.string()?.let {
-                        if (it.isNotEmpty()) {
-                            onError(it)
-                            return
+        try {
+            apiFun().enqueue(object : Callback<R> {
+                override fun onResponse(call: Call<R>, response: Response<R>) {
+                    val body: R? = response.body()
+                    if (response.isSuccessful && body != null) {
+                        onSuccess(body)
+                    } else {
+                        response.errorBody()?.string()?.let {
+                            if (it.isNotEmpty()) {
+                                onError(it)
+                                return
+                            }
                         }
+                        response.message()?.let {
+                            if (it.isNotEmpty()) {
+                                onError(it)
+                                return
+                            }
+                        }
+                        onError(L.EVPLANNING_ERROR)
                     }
-                    response.message()?.let {
+                }
+
+                override fun onFailure(call: Call<R>, t: Throwable) {
+                    t.localizedMessage?.let {
                         if (it.isNotEmpty()) {
                             onError(it)
                             return
@@ -72,23 +97,29 @@ class PlanningImpl(baseUrl: String, private val authorization: String) : Plannin
                     }
                     onError(L.EVPLANNING_ERROR)
                 }
-            }
-
-            override fun onFailure(call: Call<R>, t: Throwable) {
-                t.localizedMessage?.let {
-                    if (it.isNotEmpty()) {
-                        onError(it)
-                        return
-                    }
-                }
-                onError(L.EVPLANNING_ERROR)
-            }
-        })
+            })
+        } catch (t: Throwable) {
+            Sentry.capture(t)
+        }
     }
 
     override fun getVehicleLibrary(s: (VehicleLibraryResult) -> Unit, e: (String) -> Unit) = apiCall({ planningApi.getVehicleLibrary(authorization) }, s, e)
 
-    override fun getChargers(args: GetChargerArgs, s: (ChargersResult) -> Unit, e: (String) -> Unit) = apiCall({ planningApi.getChargers(args.lat, args.lon, args.radius, args.types, args.limit, args.allowedDbs, authorization) }, s, e)
+    override fun getChargers(args: GetChargerArgs, s: (ChargersResult) -> Unit, e: (String) -> Unit) = apiCall(
+            { planningApi.getChargers(
+                    args.lat,
+                    args.lon,
+                    args.radius,
+                    args.types?.joinToString(","),
+                    args.limit,
+                    args.allowedDbs?.joinToString(","),
+                    args.ids?.map { it.toString() }?.joinToString(","),
+                    args.getAmenities,
+                    args.amenityMaxDist?.toString(),
+                    args.amenityCateories?.joinToString(","),
+                    args.amenityFoodTypes?.joinToString(","),
+                    authorization
+            ) }, s, e)
 
     override fun getOutletTypes(s: (OutletsResult) -> Unit, e: (String) -> Unit) = apiCall({ planningApi.getOutletTypes(authorization) }, s, e)
 

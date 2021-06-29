@@ -443,4 +443,19 @@
     <string name="EVPLANNING_MIN_SOC_CHARGER">Minimum SOC at Charger</string>
     <string name="EVPLANNING_MIN_SOC_FINAL">Minimum SOC at Destination</string>
 
+    <string name="EVPLANNING_ACTION_AVOID_CHARGER">Avoid this Charger</string>
+    <string name="EVPLANNING_ACTION_ALLOW_CHARGER">Allow this Charger</string>
+    <string name="EVPLANNING_CHARGER_AVOIDED">Avoided</string>
+
+    <string name="EVPLANNING_OPERATOR">Network</string>
+    <string name="EVPLANNING_OPERATOR_ACTION_PREFER_EXCLUSIVE">Prefer %s Exclusive</string>
+    <string name="EVPLANNING_OPERATOR_ACTION_EXCLUSIVE">Use %s Exclusive</string>
+    <string name="EVPLANNING_OPERATOR_ACTION_PREFER">Prefer %s</string>
+    <string name="EVPLANNING_OPERATOR_ACTION_DONTCARE">Normal Priority for %s</string>
+    <string name="EVPLANNING_OPERATOR_ACTION_AVOID">Avoid %s</string>
+    <string name="EVPLANNING_OPERATOR_PREFERRED_EXCLUSIVE">Preferred Exclusive</string>
+    <string name="EVPLANNING_OPERATOR_EXCLUSIVE">Exclusive</string>
+    <string name="EVPLANNING_OPERATOR_PREFERRED">Preferred</string>
+    <string name="EVPLANNING_OPERATOR_AVOIDED">Avoided</string>
+
 </resources>

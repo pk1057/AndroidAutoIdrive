@@ -19,6 +19,7 @@ package me.hufman.androidautoidrive.evplanning
 
 import me.hufman.androidautoidrive.CarThread
 import me.hufman.androidautoidrive.carapp.evplanning.CarApplicationListener
+import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater
 import me.hufman.androidautoidrive.carapp.evplanning.Position
 import me.hufman.androidautoidrive.carapp.evplanning.PositionDetailedInfo
 import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningDataViewModel
@@ -31,13 +32,32 @@ data class CarData(
 	val finalDestinationDetails: PositionDetailedInfo = PositionDetailedInfo(),
 	val odometer: Int = 0,
 	val soc: Double = 0.0,
-	val drivingMode: Int = 0,
+	val drivingMode: DrivingMode = DrivingMode.UNDEFINED,
 	val speed: Int = 0,
 	val torque: Int = 0,
 	val batteryTemperatureval: Int = Int.MIN_VALUE,
 	val internalTemperature: Int = Int.MIN_VALUE,
 	val externalTemperature: Int = Int.MIN_VALUE,
 )
+
+enum class DrivingMode(val raw: Int) {
+	UNDEFINED(0),
+	COMFORT(2),
+	COMFORT_PLUS(9),
+	BASIC(3),
+	SPORT(4),
+	SPORT_PLUS(5),
+	RACE(6),
+	ECOPRO(7),
+	ECOPRO_PLUS(8);
+
+	companion object {
+		val map = values().asSequence().map { it.raw to it }.toMap()
+		fun of(value: Int): DrivingMode {
+			return map.getOrElse(value) { throw IllegalArgumentException("$value is not a valid DrivingMode") }
+		}
+	}
+}
 
 /*
  * The purpose of the RoutingServiceUpdater is to post aggregated data
@@ -50,6 +70,7 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 	var threadCarApp: CarThread? = null
 
 	var routingService: RoutingService? = null
+	var navigationModelUpdater: NavigationModelUpdater? = null
 
 	private var nextDestination = Position()
 	private var position = Position()
@@ -58,7 +79,7 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 	private var finalDestinationDetails = PositionDetailedInfo()
 	private var odometer: Int = 0
 	private var soc: Double = 0.0
-	private var drivingMode: Int = 0
+	private var drivingMode: DrivingMode = DrivingMode.UNDEFINED
 	private var speed: Int = 0
 	private var torque: Int = 0
 	private var batteryTemperature: Int = Int.MIN_VALUE
@@ -91,7 +112,11 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 		}
 
 		override fun onDrivingModeChanged(drivingMode: Int) {
-			this@RoutingServiceUpdater.drivingMode = drivingMode
+			this@RoutingServiceUpdater.drivingMode = try {
+				DrivingMode.of(drivingMode)
+			} catch (iae: IllegalArgumentException) {
+				DrivingMode.UNDEFINED
+			}
 		}
 
 		override fun onOdometerChanged(odometer: Int) {
@@ -127,6 +152,13 @@ class RoutingServiceUpdater(private val updateScheduleMillis: Long) {
 		override fun triggerAlternativesPlanning() {
 			threadRouting?.post {
 				routingService?.planAlternateNext()
+			}
+		}
+
+		override fun triggerCheckReloadDetails() {
+			threadRouting?.post {
+				routingService?.checkNetworkPreferencesDetails()
+				routingService?.checkIgnoredChargerDetails()
 			}
 		}
 	}

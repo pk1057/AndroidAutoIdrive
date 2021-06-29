@@ -40,7 +40,7 @@ data class Charger(
 		val status: String,                   // "OPEN", "CONSTRUCTION" (not yet open), "CLOSED", "LIMITED"
 		val region: String?,                  // "region": "europe",
 		val country_3: String?,               // "DEU"
-		val network_id: Int?,                 // "network_id": 85,
+		val network_id: Long?,                 // "network_id": 85,
 		val network_name: String?,            // "network_name": "Ionity",
 		val network_icon: String?,            // null - "ionity.png"
 		val source_attribution_logo: String?, // "https://abetterrouteplanner.com/icon/ionity_logo.png"

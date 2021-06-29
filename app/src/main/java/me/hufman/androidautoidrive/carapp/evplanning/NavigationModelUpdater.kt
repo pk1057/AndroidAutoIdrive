@@ -33,12 +33,16 @@ import java.util.*
  * of aggregated data from RoutingService to the carapp model
  * on the carapp's thread.
  */
-class NavigationModelUpdater() {
+class NavigationModelUpdater {
 
 	var threadCarApp: CarThread? = null
 	var navigationModelController: NavigationModelController? = null
 	var existingPlan: Plan? = null
 	var nextChargerPlan: Plan? = null
+
+	//TODO: implement DisplayCharger logic, updates on cardata-changes (distance to position, smallest offset to existing route)
+	var ignoredChargerRouteData: Map<Long,ChargerRouteData?>? = null
+	var networkPreferences: Map<Long,NetworkPreferenceData>? = null
 
 	val routingDataListener = object : RoutingDataListener {
 
@@ -49,13 +53,31 @@ class NavigationModelUpdater() {
 				EVPlanningDataViewModel.setRoutingData(routingData)
 
 				val waypoints = routingData.routeData?.let { routeData ->
-					nextChargerPlan?.routes?.let {
-						parseRouteData(routingData.carData, it, routeData)
+						nextChargerPlan?.routes?.let {
+							parseRouteData(
+								it,
+								routeData,
+								ignoredChargerRouteData?.keys,
+								networkPreferences
+							)
+						}
+					}?.let { extractNextChargerWaypoints(it) }
+
+				val displayRoutes =	routingData.routeData?.let { routeData ->
+						existingPlan?.routes?.let {
+							parseRouteData(
+								it,
+								routeData,
+								ignoredChargerRouteData?.keys,
+								networkPreferences
+							)
+						}
 					}
-				}?.let { extractNextChargerWaypoints(it) }
-				val displayRoutes = routingData.routeData?.let { routeData ->
-					existingPlan?.routes?.let { parseRouteData(routingData.carData, it, routeData) }
+
+				val displayChargers = routingData.routeData?.let { routeData ->
+
 				}
+
 				threadCarApp?.post {
 					navigationModelController?.setNextChargerWaypoints(waypoints)
 					navigationModelController?.setDisplayRoutes(displayRoutes)
@@ -93,6 +115,20 @@ class NavigationModelUpdater() {
 				navigationModelController?.planningError(msg)
 			}
 		}
+
+		override fun onIgnoredChargersChanged(chargers: Map<Long,ChargerRouteData?>) {
+			threadCarApp?.post {
+				ignoredChargerRouteData = chargers
+				navigationModelController?.ignoredChargersChanged()
+			}
+		}
+
+		override fun onNetworkPreferencesChanged(preferences: Map<Long,NetworkPreferenceData>) {
+			threadCarApp?.post {
+				networkPreferences = preferences
+				navigationModelController?.networkPreferencesChanged()
+			}
+		}
 	}
 
 	fun onCreateCarApp(threadCarApp: CarThread?) {
@@ -106,8 +142,8 @@ class NavigationModelUpdater() {
 
 	companion object {
 
-		val TIME_FMT = DateTimeFormatter.ofPattern("HH:mm")
-		val NAME_MATCHER = Regex("^(.*[^\\s])\\s*\\[([^\\[]*)\\]\$")
+		val TIME_FMT = DateTimeFormatter.ofPattern("HH:mm")!!
+		val NAME_MATCHER = Regex("^(.*[^\\s])\\s*\\[([^\\[]*)]\$")
 
 		class Acc(
 			var previous: Step? = null,
@@ -119,9 +155,9 @@ class NavigationModelUpdater() {
 		)
 
 		fun extractNextChargerWaypoints(displayRoutes: List<DisplayRoute>): List<DisplayWaypoint> {
-			val min_duration = displayRoutes.map { it.arrival_duration }.filterNotNull().minOrNull()
-			val min_distance = displayRoutes.map { it.trip_dst }.filterNotNull().minOrNull()
-			return displayRoutes.map { displayRoute ->
+			val minDuration = displayRoutes.mapNotNull { it.arrival_duration }.minOrNull()
+			val minDistance = displayRoutes.mapNotNull { it.trip_dst }.minOrNull()
+			return displayRoutes.mapNotNull { displayRoute ->
 				displayRoute.displayWaypoints?.firstOrNull()?.let {
 					if (it.is_initial_charger) {
 						displayRoute.displayWaypoints.getOrNull(1)
@@ -133,9 +169,13 @@ class NavigationModelUpdater() {
 						icon = it.icon,
 						title = it.title,
 						operator = it.operator,
+						operator_id = it.operator_id,
+						operator_preference = it.operator_preference,
+						charger_id = it.charger_id,
 						charger_type = it.charger_type,
 						is_waypoint = it.is_waypoint,
 						is_initial_charger = it.is_initial_charger,
+						is_ignored_charger = it.is_ignored_charger,
 						address = it.address,
 						trip_dst = it.trip_dst,
 						step_dst = it.step_dst,
@@ -147,12 +187,12 @@ class NavigationModelUpdater() {
 						duration = it.duration,
 						num_chargers = it.num_chargers,
 						free_chargers = it.free_chargers,
-						delta_duration = min_duration?.let { min_dur ->
+						delta_duration = minDuration?.let { min_dur ->
 							displayRoute.arrival_duration?.minus(
 								min_dur
 							)
 						},
-						delta_dst = min_distance?.let { min_dst ->
+						delta_dst = minDistance?.let { min_dst ->
 							displayRoute.trip_dst?.minus(
 								min_dst
 							)
@@ -160,29 +200,38 @@ class NavigationModelUpdater() {
 						final_num_charges = displayRoute.num_charges,
 						lat = it.lat,
 						lon = it.lon,
+						id = it.id,
 					)
 				}
-			}.filterNotNull()
+			}
 		}
 
-		fun parseRouteData(carData: CarData, routes: List<Route>, routeDataList: List<RouteData>): List<DisplayRoute> {
+		fun parseRouteData(
+			routes: List<Route>,
+			routeDataList: List<RouteData>,
+			ignored: Set<Long>?,
+			preferences: Map<Long,NetworkPreferenceData>?,
+		): List<DisplayRoute> {
 			val now = LocalDateTime.now()
-			return routeDataList.filterNot {
-				it.stepIndex == null
+			return routeDataList.filter {
+				it.positionRouteData?.stepIndex != null
 			}.mapNotNull { routeData ->
 				routes.getOrNull(routeData.routeIndex)?.let { route ->
-					val (start_dist, start_time) = deriveStartTimeDuration(routeData, route)
+					val positionRouteData = routeData.positionRouteData!!
+					val (start_dist, start_time) = deriveStartTimeDuration(positionRouteData, route)
 					route.steps?.filterIndexed { index, _ ->
-						index >= routeData.stepIndex!!
+						index >= positionRouteData.stepIndex!!
 					}?.let { steps ->
 						accumulateDisplayData(
 							steps,
-							routeData.pathStepIndex,
-							routeData.waypointIndexInfos.map { WaypointIndexInfo(it.index - routeData.stepIndex!!,it.info) },
+							positionRouteData.pathStepIndex,
+							routeData.waypointIndexInfos.map { WaypointIndexInfo(it.index - positionRouteData.stepIndex!!,it.info) },
 							start_time,
 							start_dist,
 							routeData.soc_ariv,
-							now
+							now,
+							ignored,
+							preferences,
 						)
 					}?.let {
 						DisplayRoute(
@@ -190,7 +239,7 @@ class NavigationModelUpdater() {
 							arrival_duration = it.arrival_duration,
 							num_charges = it.num_charges,
 							charge_duration = it.charge_duration,
-							deviation = routeData.distance?.toInt(),
+							deviation = positionRouteData.distance,
 							contains_waypoint = it.displayWaypoints.filter { waypoint -> waypoint.is_waypoint }.size > 1,
 							displayWaypoints = it.displayWaypoints
 						)
@@ -202,10 +251,10 @@ class NavigationModelUpdater() {
 		// returns Triple of remaining distance (in meter), remaining time (in seconds)
 		// and the difference of real soc and estimated soc at current pathstep
 		private fun deriveStartTimeDuration(
-			routeData: RouteData,
+			positionRouteData: PositionRouteData,
 			route: Route
-		) = routeData.stepIndex?.let { stepIndex ->
-			routeData.pathStepIndex?.let {
+		) = positionRouteData.stepIndex?.let { stepIndex ->
+			positionRouteData.pathStepIndex?.let {
 				route.steps?.getOrNull(stepIndex)?.path?.getOrNull(it)
 			}?.let {
 				Pair(
@@ -232,7 +281,9 @@ class NavigationModelUpdater() {
 			start_time: Int?,
 			start_dist: Int?,
 			soc_ariv: Double?,
-			now: LocalDateTime
+			now: LocalDateTime,
+			ignored: Set<Long>?,
+			preferences: Map<Long, NetworkPreferenceData>?
 		) = steps.foldIndexed(Acc(), { index, acc, step ->
 			// include starting-point only if it's a charger and it is very close:
 			if (index > 0 || step.is_charger == true && (pathStepIndex == null || pathStepIndex < 2)) {
@@ -256,12 +307,12 @@ class NavigationModelUpdater() {
 				}
 
 				val (numChargers, freeChargers) = step.charger_type?.let {
-					if (it.equals("0")) null else it
+					if (it == "0") null else it
 				}?.let { chargerType ->
 					step.charger?.outlets?.filter {
-						chargerType.equals(it.type)
-					}?.let {
-						Pair(it.size, it.count { "OPERATIONAL".equals(it.status) })
+						chargerType == it.type
+					}?.let { outlets ->
+						Pair(outlets.size, outlets.count { "OPERATIONAL" == it.status })
 					}
 				} ?: Pair(Int.MIN_VALUE, Int.MIN_VALUE)
 
@@ -274,6 +325,14 @@ class NavigationModelUpdater() {
 						?: indexInfo?.info?.details?.toAddressString(),
 					operator = step.charger?.network_name
 						?: operator?.takeIf { it.isNotEmpty() },
+					operator_id = step.charger?.network_id,
+					operator_preference = step.charger?.network_id?.let { id ->
+						preferences
+							?.get(id)
+							?.preference
+							?: NetworkPreference.DONTCARE
+					},
+					charger_id = step.charger?.id,
 					charger_type = step.charger_type?.let {
 						if (it == "0") null else it.toUpperCase(
 							Locale.ROOT
@@ -281,6 +340,7 @@ class NavigationModelUpdater() {
 					},
 					is_waypoint = indexInfo != null,
 					is_initial_charger = (index == 0),
+					is_ignored_charger = ignored?.contains(step.charger?.id) ?: false,
 					address = step.charger?.address
 						?: indexInfo?.info?.details?.toAddressString()
 						?: indexInfo?.info?.position?.name?.takeIf { it.isNotBlank() }
@@ -315,6 +375,7 @@ class NavigationModelUpdater() {
 					free_chargers = freeChargers,
 					lat = step.lat,
 					lon = step.lon,
+					id = step.charger?.id,
 				))
 			}
 			acc.previous = step

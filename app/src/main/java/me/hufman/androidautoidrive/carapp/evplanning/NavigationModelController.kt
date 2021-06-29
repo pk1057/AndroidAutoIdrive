@@ -22,36 +22,7 @@ import android.location.Address
 import io.sentry.Sentry
 import me.hufman.androidautoidrive.carapp.navigation.NavigationParser
 import me.hufman.androidautoidrive.carapp.navigation.NavigationTriggerSender
-import me.hufman.androidautoidrive.evplanning.DisplayRoute
-import me.hufman.androidautoidrive.evplanning.DisplayWaypoint
 import java.util.*
-
-class NavigationModel {
-
-	var isPlanning: Boolean = false
-	var isError: Boolean = false
-	var shouldReplan: Boolean = false
-	var isNextChargerMode: Boolean = false
-
-	var errorMessage: String? = null
-
-	var displayRoutesValid: Boolean = false
-	var selectedRouteValid: Boolean = false
-	var selectedWaypointValid: Boolean = false
-
-	var displayRoutes: List<DisplayRoute>? = null
-	var selectedRoute: List<DisplayWaypoint>? = null
-	var nextChargerWaypoints: List<DisplayWaypoint>? = null
-	var nextChargerWaypointsValid: Boolean = false
-	var selectedWaypoint: DisplayWaypoint? = null
-
-	var selectedRouteIndex: Int? = null
-	var selectedWaypointIndex: Int? = null
-
-	var routesListObserver: (() -> Unit)? = null
-	var waypointListObserver: (() -> Unit)? = null
-	var selectedWaypointObserver: (() -> Unit)? = null
-}
 
 class NavigationModelController(val context: Context) {
 
@@ -223,6 +194,18 @@ class NavigationModelController(val context: Context) {
 			routesListObserver?.invoke()
 			waypointListObserver?.invoke()
 			selectedWaypointObserver?.invoke()
+		}
+	}
+
+	fun ignoredChargersChanged() {
+		navigationModel.apply {
+			ignoredChargersObserver?.invoke()
+		}
+	}
+
+	fun networkPreferencesChanged() {
+		navigationModel.apply {
+			networkPreferencesObserver?.invoke()
 		}
 	}
 }
