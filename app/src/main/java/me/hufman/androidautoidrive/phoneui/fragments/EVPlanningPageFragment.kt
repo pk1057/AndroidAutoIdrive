@@ -35,30 +35,20 @@ class EVPlanningPageFragment: Fragment() {
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		super.onViewCreated(view, savedInstanceState)
 
-		val evPlanningEnabledSetting = BooleanLiveSetting(requireContext().applicationContext, AppSettings.KEYS.EVPLANNING_ENABLED)
-		evPlanningEnabledSetting.observe(viewLifecycleOwner) {
-			swEVPlanningEnabled.isChecked = it
-			paneEVPlanningSettings.visible = it
-			paneEVPlanningData.visible = it
-		}
-		swEVPlanningEnabled.setOnCheckedChangeListener { _, isChecked ->
-			onChangedSwitchEVPlanning(evPlanningEnabledSetting, isChecked)
-		}
-	}
-
-	override fun onResume() {
-		super.onResume()
-
-//		viewModel.update()
-	}
-
-	private fun onChangedSwitchEVPlanning(appSetting: BooleanLiveSetting, isChecked: Boolean) {
-		appSetting.setValue(isChecked)
-		if (isChecked) {
-			// make sure we have permissions to read the notifications
-//			if (viewModel.hasNotificationPermission.value != true) {
-//				permissionsController.promptNotification()
-//			}
-		}
+		BooleanLiveSetting(requireContext().applicationContext, AppSettings.KEYS.EVPLANNING_ENABLED)
+			.apply {
+				observe(viewLifecycleOwner) {
+					swEVPlanningEnabled.isChecked = it
+					paneEVPlanningSettings.visible = it
+					paneEVPlanningData.visible = it
+					paneEVPlanningIgnoredChargers.visible = it
+					paneEVPlanningNetworkPreferences.visible = it
+				}
+			}
+			.also {
+				swEVPlanningEnabled.setOnCheckedChangeListener { _, isChecked ->
+					it.setValue(isChecked)
+				}
+			}
 	}
 }
