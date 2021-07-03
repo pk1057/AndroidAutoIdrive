@@ -154,6 +154,8 @@
     <string name="lbl_evplanning_reference_consumption">Reference Consumption</string>
     <string name="lbl_evplanning_min_soc_charger">Minimum SOC at Charger</string>
     <string name="lbl_evplanning_min_soc_final">Minimum SOC at Destination</string>
+    <string name="lbl_evplanning_ignored_chargers">Chargers to be avoided:</string>
+    <string name="lbl_evplanning_network_preferences">Charging Operators Preferences:</string>
 
     <string name="connectionStatusMissingConnectedApp">Can\'t find Connected or Connected Classic app</string>
     <string name="connectionStatusWaiting">Waiting for connection to car</string>

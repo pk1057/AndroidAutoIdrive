@@ -57,14 +57,6 @@ class EVPlanningDataViewModel(): ViewModel() {
 		fun setMaxSpeed(maxSpeed: Double?) {
 			_maxSpeed.postValue(maxSpeed)
 		}
-		private val _ignoredChargers = MutableLiveData<String>()
-		fun setIgnoredChargers(ignoredChargers: String) {
-			_ignoredChargers.postValue(ignoredChargers)
-		}
-		private val _networkPreferences = MutableLiveData<String>()
-		fun setNetworkPreferences(networkPreferences: String) {
-			_networkPreferences.postValue(networkPreferences)
-		}
 	}
 
 	val routeData: LiveData<RoutingData> = _routeData
@@ -73,6 +65,4 @@ class EVPlanningDataViewModel(): ViewModel() {
 	val error: LiveData<String> = _error
 	val carappDebug: LiveData<String> = _carappDebug
 	val maxSpeed: LiveData<Double?> = _maxSpeed
-	val ignoredChargers: LiveData<String> = _ignoredChargers
-	val networkPreferences: LiveData<String> = _networkPreferences
 }

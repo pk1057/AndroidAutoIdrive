@@ -24,6 +24,8 @@ import me.hufman.androidautoidrive.evplanning.iternio.entity.Plan
 import me.hufman.androidautoidrive.evplanning.iternio.entity.Route
 import me.hufman.androidautoidrive.evplanning.iternio.entity.Step
 import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningDataViewModel
+import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningIgnoredChargersModel
+import me.hufman.androidautoidrive.phoneui.viewmodels.EVPlanningNetworkPreferencesModel
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -117,6 +119,7 @@ class NavigationModelUpdater {
 		}
 
 		override fun onIgnoredChargersChanged(chargers: Map<Long,ChargerRouteData?>) {
+			EVPlanningIgnoredChargersModel.setChargerData(chargers)
 			threadCarApp?.post {
 				ignoredChargerRouteData = chargers
 				navigationModelController?.ignoredChargersChanged()
@@ -124,6 +127,7 @@ class NavigationModelUpdater {
 		}
 
 		override fun onNetworkPreferencesChanged(preferences: Map<Long,NetworkPreferenceData>) {
+			EVPlanningNetworkPreferencesModel.setPreferencesData(preferences)
 			threadCarApp?.post {
 				networkPreferences = preferences
 				navigationModelController?.networkPreferencesChanged()

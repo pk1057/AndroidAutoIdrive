@@ -25,3 +25,4 @@ class EVPlanningSettingsModel(appContext: Context): ViewModel() {
 	val minSocCharger = StringLiveSetting(appContext,AppSettings.KEYS.EVPLANNING_MIN_SOC_CHARGER)
 	val minSocFinal = StringLiveSetting(appContext,AppSettings.KEYS.EVPLANNING_MIN_SOC_FINAL)
 }
+

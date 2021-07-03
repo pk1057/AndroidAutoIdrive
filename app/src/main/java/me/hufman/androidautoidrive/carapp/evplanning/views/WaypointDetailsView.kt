@@ -328,7 +328,7 @@ class WaypointDetailsView(
 			buttons[index].apply {
 				setEnabled(true)
 				setSelectable(true)
-				getImageModel()?.asImageIdModel()?.imageId = 149
+				getImageModel()?.asImageIdModel()?.imageId = 158
 				getTooltipModel()?.asRaDataModel()?.value = if (wp.is_ignored_charger) {
 					L.EVPLANNING_ACTION_ALLOW_CHARGER
 				} else {

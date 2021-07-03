@@ -37,6 +37,18 @@
         <androidx.fragment.app.FragmentContainerView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:id="@+id/paneEVPlanningIgnoredChargers"
+            android:name="me.hufman.androidautoidrive.phoneui.fragments.EVPlanningIgnoredChargersFragment"/>
+
+        <androidx.fragment.app.FragmentContainerView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/paneEVPlanningNetworkPreferences"
+            android:name="me.hufman.androidautoidrive.phoneui.fragments.EVPlanningNetworkPreferencesFragment"/>
+
+        <androidx.fragment.app.FragmentContainerView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:id="@+id/paneEVPlanningData"
             android:name="me.hufman.androidautoidrive.phoneui.fragments.EVPlanningDataFragment"/>
 

@@ -124,6 +124,14 @@ class PreferenceUtils {
 			}
 		}
 
+		fun networkPreferencesToJson(networkPreferences: Map<Long,NetworkPreference>): String {
+			return networkPreferences
+				.asSequence()
+				.map { it.key to it.value.value }
+				.toMap()
+				.let { Gson().toJson(it) }
+		}
+
 		fun addLongJsonString(ignoreChargerString: String, id: Long): String {
 			return jsonToIgnoreChargers(ignoreChargerString)
 				?.toMutableSet()
@@ -153,10 +161,9 @@ class PreferenceUtils {
 						else -> put(id, preference)
 					}
 				}
-				?.asSequence()
-				?.map { it.key to it.value.value }
-				?.toMap()
-				?.let { Gson().toJson(it) }
+				?.let {
+					networkPreferencesToJson(it)
+				}
 				?: when (preference) {
 					NetworkPreference.DONTCARE -> "{}"
 					else -> Gson().toJson(mapOf(id to preference.value))

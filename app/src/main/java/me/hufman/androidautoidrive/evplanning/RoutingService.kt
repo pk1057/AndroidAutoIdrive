@@ -267,11 +267,9 @@ class RoutingService(
 		minSocCharger = getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MIN_SOC_CHARGER)
 		minSocDestination = getAppSettingDouble(AppSettings.KEYS.EVPLANNING_MIN_SOC_FINAL)
 		ignoreChargers = appSettings?.get(AppSettings.KEYS.EVPLANNING_IGNORE_CHARGERS)?.let {
-			EVPlanningDataViewModel.setIgnoredChargers(it)
 			jsonToIgnoreChargers(it)
 		}
 		networkPreferences = appSettings?.get(AppSettings.KEYS.EVPLANNING_NETWORK_PREFERENCES)?.let {
-			EVPlanningDataViewModel.setNetworkPreferences(it)
 			jsonToNetworkPreferences(it)
 		}
 	}
@@ -381,6 +379,7 @@ class RoutingService(
 	}
 
 	fun checkIgnoredChargerDetails() {
+		var changed = false
 		ignoreChargers
 			?.subtract(chargerRouteData.keys)
 			?.forEach { id ->
@@ -396,6 +395,7 @@ class RoutingService(
 						.firstOrNull()
 						?.let { charger ->
 							chargerRouteData[id] = ChargerRouteData.of(charger, routes)
+							changed = true
 						}
 				}
 			}
@@ -410,6 +410,11 @@ class RoutingService(
 
 		chargerRouteData.keys.subtract(ignoreChargers ?: emptySet()).forEach {
 			chargerRouteData.remove(it)
+			changed = true
+		}
+
+		if (changed) {
+			notifyIgnoreChargersChanged()
 		}
 	}
 
@@ -422,7 +427,7 @@ class RoutingService(
 				handler?.post {
 					error = null
 					it.result?.asSequence()?.filter {
-						it.id != null
+						it.id != null && ignoreChargers?.contains(it.id) ?: false
 					}?.forEach {
 						chargerRouteData[it.id!!] = ChargerRouteData.of(
 							Charger.of(it),
