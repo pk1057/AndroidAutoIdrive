@@ -60,6 +60,7 @@ class MainService: Service() {
 	var notificationService: NotificationService? = null
 	var mapService: MapService? = null
 	var musicService: MusicService? = null
+	var addonsService: AddonsService? = null
 
 	var threadAssistant: CarThread? = null
 	var carappAssistant: AssistantApp? = null
@@ -243,7 +244,7 @@ class MainService: Service() {
 
 		val foregroundNotification = foregroundNotificationBuilder.build()
 		if (this.foregroundNotification?.extras?.getCharSequence(Notification.EXTRA_TEXT) !=
-				foregroundNotification?.extras?.getCharSequence(Notification.EXTRA_TEXT)) {
+				foregroundNotification.extras?.getCharSequence(Notification.EXTRA_TEXT)) {
 			startForeground(ONGOING_NOTIFICATION_ID, foregroundNotification)
 		}
 		this.foregroundNotification = foregroundNotification
@@ -310,6 +311,9 @@ class MainService: Service() {
 
 					// start navigation handler
 					startNavigationListener()
+
+					// start addons
+					startAny = startAny or startAddons()
 				}
 
 				// check if we are idle and should shut down
@@ -465,6 +469,17 @@ class MainService: Service() {
 		)
 	}
 
+	fun startAddons(): Boolean {
+		if (carInformationObserver.capabilities.isNotEmpty() && addonsService == null) {
+			addonsService = AddonsService(applicationContext, iDriveConnectionReceiver, securityAccess)
+		}
+		return addonsService?.start() ?: false
+	}
+
+	fun stopAddons() {
+		addonsService?.stop()
+	}
+
 	private fun stopCarApps() {
 		stopCarCapabilities()
 		stopEVPlanning()
@@ -473,6 +488,7 @@ class MainService: Service() {
 		stopMusic()
 		stopAssistant()
 		stopNavigationListener()
+		stopAddons()
 
 		// revert notification to Waiting for Connection
 		startServiceNotification(iDriveConnectionReceiver.brand, ChassisCode.fromCode(carInformationObserver.capabilities["vehicle.type"] ?: "Unknown"))

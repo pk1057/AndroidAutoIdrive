@@ -33,6 +33,8 @@ class PermissionsModel(private val notificationListenerState: LiveData<Boolean>,
 
 	private val _hasNotificationPermission = MutableLiveData(false)
 	val hasNotificationPermission: LiveData<Boolean> = _hasNotificationPermission
+	private val _supportsSmsPermission = MutableLiveData(false)
+	val supportsSmsPermission: LiveData<Boolean> = _supportsSmsPermission
 	private val _hasSmsPermission = MutableLiveData(false)
 	val hasSmsPermission: LiveData<Boolean> = _hasSmsPermission
 	private val _hasLocationPermission = MutableLiveData(false)
@@ -52,6 +54,7 @@ class PermissionsModel(private val notificationListenerState: LiveData<Boolean>,
 
 	fun update() {
 		_hasNotificationPermission.value = notificationListenerState.value == true && permissionsState.hasNotificationPermission
+		_supportsSmsPermission.value = permissionsState.supportsSmsPermission
 		_hasSmsPermission.value = permissionsState.hasSmsPermission
 		_hasLocationPermission.value = permissionsState.hasLocationPermission
 		_hasBackgroundPermission.value =  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
@@ -84,25 +87,37 @@ class PermissionsModel(private val notificationListenerState: LiveData<Boolean>,
 	private fun _updateSpotify() {
 		_hasSpotifyControlPermission.value = spotifyConnector.previousControlSuccess()
 		val errorName = spotifyConnector.lastError?.javaClass?.simpleName
-		val errorMessage = spotifyConnector.lastError?.message
+		val errorMessage = spotifyConnector.lastError?.message ?: ""
 		when(errorName) {
 			"CouldNotFindSpotifyApp" -> _spotifyErrorHint.value = { getString(R.string.musicAppNotes_spotify_apiNotFound) }
 			"OfflineModeException" -> _spotifyErrorHint.value = { getString(R.string.musicAppNotes_spotify_apiUnavailable) }
 			"UserNotAuthorizedException" -> when {
 				// no internet
-				errorMessage?.contains("AUTHENTICATION_SERVICE_UNAVAILABLE") == true -> {
+				errorMessage.contains("AUTHENTICATION_SERVICE_UNAVAILABLE") -> {
 					_spotifyErrorHint.value = { getString(R.string.musicAppNotes_spotify_apiUnavailable) }
 				}
+				// user cancelled
+				errorMessage.contains("Canceled") -> {
+					_spotifyErrorHint.value = { getString(R.string.musicAppNotes_spotify_userDeclined) }
+				}
 				// user didn't grant access or user cancelled
-				errorMessage?.contains("User authorization required") == true -> {
-					_spotifyErrorHint.value = { ""}
+				errorMessage.contains("AUTHENTICATION_DENIED_BY_USER") -> {
+					_spotifyErrorHint.value = { getString(R.string.musicAppNotes_spotify_userDeclined) }
+				}
+				// user didn't grant access or user cancelled
+				errorMessage.contains("User authorization required") -> {
+					_spotifyErrorHint.value = { getString(R.string.musicAppNotes_spotify_userDeclined) }
+				}
+				// could not open the prompt
+				errorMessage.contains("Explicit user authorization") -> {
+					_spotifyErrorHint.value = { getString(R.string.musicAppNotes_spotify_backgroundDisabled) }
 				}
 				// unknown
 				else -> {
-					_spotifyErrorHint.value = { errorMessage ?: "" }
+					_spotifyErrorHint.value = { errorMessage }
 				}
 			}
-			else -> _spotifyErrorHint.value = { errorMessage ?: "" }
+			else -> _spotifyErrorHint.value = { errorMessage }
 		}
 
 		_isSpotifyWebApiAuthorized.value = spotifyAuthStateManager.isAuthorized()
@@ -131,6 +146,11 @@ class PermissionsState(private val appContext: Context) {
 		get() {
 			val enabledListeners = NotificationManagerCompat.getEnabledListenerPackages(appContext)
 			return enabledListeners.contains(appContext.packageName)
+		}
+
+	val supportsSmsPermission: Boolean
+		get() = appContext.packageManager.getPackageInfo(appContext.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions.any {
+			it == Manifest.permission.READ_SMS
 		}
 
 	val hasSmsPermission: Boolean
