@@ -25,7 +25,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
-import kotlinx.android.synthetic.main.fragment_evplanning_network_preferences.*
+import androidx.recyclerview.widget.RecyclerView
 import me.hufman.androidautoidrive.R
 import me.hufman.androidautoidrive.phoneui.adapters.EVPlanningNetworkPreferencesAdapter
 import me.hufman.androidautoidrive.phoneui.adapters.NetworkPreferencesSwypeHelper
@@ -43,26 +43,29 @@ class EVPlanningNetworkPreferencesFragment: Fragment() {
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		super.onViewCreated(view, savedInstanceState)
 
-		val adapter = EVPlanningNetworkPreferencesAdapter()
+		val evPlanningNetworkPreferencesAdapter = EVPlanningNetworkPreferencesAdapter()
 
-		val viewModel = ViewModelProvider(this, EVPlanningNetworkPreferencesModel.Factory(requireContext().applicationContext))
+		controller = ViewModelProvider(this, EVPlanningNetworkPreferencesModel.Factory(requireContext().applicationContext))
 				.get(EVPlanningNetworkPreferencesModel::class.java)
 				.apply {
 					preferencesData.observe(
 						viewLifecycleOwner,
-						adapter::onPreferecesDataChanged
+						evPlanningNetworkPreferencesAdapter::onPreferecesDataChanged
 					)
 				}
+				.let {
+					EVPlanningNetworkPreferencesController(it)
+				}
 
-		controller = EVPlanningNetworkPreferencesController(viewModel)
-
-		adapter.onItemRemove = { id ->
+		evPlanningNetworkPreferencesAdapter.onItemRemove = { id ->
 			controller.removePreference(id)
 		}
 
-		listNetworkPreferences.layoutManager = LinearLayoutManager(requireActivity())
-		listNetworkPreferences.adapter = adapter
-
-		ItemTouchHelper(NetworkPreferencesSwypeHelper()).attachToRecyclerView(listNetworkPreferences)
+		view.findViewById<RecyclerView>(R.id.listNetworkPreferences).apply {
+			layoutManager = LinearLayoutManager(requireActivity())
+			adapter = evPlanningNetworkPreferencesAdapter
+		}.let {
+			ItemTouchHelper(NetworkPreferencesSwypeHelper()).attachToRecyclerView(it)
+		}
 	}
 }

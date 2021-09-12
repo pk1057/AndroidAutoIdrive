@@ -25,7 +25,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
-import kotlinx.android.synthetic.main.fragment_evplanning_ignored_chargers.*
+import androidx.recyclerview.widget.RecyclerView
 import me.hufman.androidautoidrive.R
 import me.hufman.androidautoidrive.phoneui.adapters.EVPlanningIgnoredChargersAdapter
 import me.hufman.androidautoidrive.phoneui.adapters.IgnoredChargersSwypeHelper
@@ -43,26 +43,29 @@ class EVPlanningIgnoredChargersFragment: Fragment() {
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		super.onViewCreated(view, savedInstanceState)
 
-		val adapter = EVPlanningIgnoredChargersAdapter()
+		val evPlanningIgnoredChargersAdapter = EVPlanningIgnoredChargersAdapter()
 
-		val viewModel = ViewModelProvider(this, EVPlanningIgnoredChargersModel.Factory(requireContext().applicationContext))
+		controller = ViewModelProvider(this, EVPlanningIgnoredChargersModel.Factory(requireContext().applicationContext))
 				.get(EVPlanningIgnoredChargersModel::class.java)
 				.apply {
 					chargerData.observe(
 						viewLifecycleOwner,
-						adapter::onChargerDataChanged
+						evPlanningIgnoredChargersAdapter::onChargerDataChanged
 					)
 				}
+				.let {
+					EVPlanningIgnoredChargersController(it)
+				}
 
-		controller = EVPlanningIgnoredChargersController(viewModel)
-
-		adapter.onItemRemove = { id ->
+		evPlanningIgnoredChargersAdapter.onItemRemove = { id ->
 			controller.removeCharger(id)
 		}
 
-		listIgnoredChargers.layoutManager = LinearLayoutManager(requireActivity())
-		listIgnoredChargers.adapter = adapter
-
-		ItemTouchHelper(IgnoredChargersSwypeHelper()).attachToRecyclerView(listIgnoredChargers)
+		view.findViewById<RecyclerView>(R.id.listIgnoredChargers).apply {
+			layoutManager = LinearLayoutManager(requireActivity())
+			adapter = evPlanningIgnoredChargersAdapter
+		}.let {
+			ItemTouchHelper(IgnoredChargersSwypeHelper()).attachToRecyclerView(it)
+		}
 	}
 }

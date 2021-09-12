@@ -21,9 +21,12 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
-import kotlinx.android.synthetic.main.fragment_evplanningpage.*
-import me.hufman.androidautoidrive.*
+import androidx.fragment.app.FragmentContainerView
+import me.hufman.androidautoidrive.AppSettings
+import me.hufman.androidautoidrive.BooleanLiveSetting
+import me.hufman.androidautoidrive.R
 import me.hufman.androidautoidrive.phoneui.ViewHelpers.visible
 
 class EVPlanningPageFragment: Fragment() {
@@ -34,6 +37,12 @@ class EVPlanningPageFragment: Fragment() {
 
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		super.onViewCreated(view, savedInstanceState)
+
+		val swEVPlanningEnabled = view.findViewById<SwitchCompat>(R.id.swEVPlanningEnabled)
+		val paneEVPlanningSettings = view.findViewById<FragmentContainerView>(R.id.paneEVPlanningSettings)
+		val paneEVPlanningData = view.findViewById<FragmentContainerView>(R.id.paneEVPlanningData)
+		val paneEVPlanningIgnoredChargers = view.findViewById<FragmentContainerView>(R.id.paneEVPlanningIgnoredChargers)
+		val paneEVPlanningNetworkPreferences = view.findViewById<FragmentContainerView>(R.id.paneEVPlanningNetworkPreferences)
 
 		BooleanLiveSetting(requireContext().applicationContext, AppSettings.KEYS.EVPLANNING_ENABLED)
 			.apply {
