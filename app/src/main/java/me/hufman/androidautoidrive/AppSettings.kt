@@ -51,6 +51,7 @@ interface AppSettings {
 		CACHED_CAR_DATA("Cached_Car_Data", "{}", "JSON Object of any previously-cached cds properties"),
 		PREFER_CAR_LANGUAGE("Prefer_Car_Language", "true", "Prefer the car's language instead of the phone's language"),
 		FORCE_CAR_LANGUAGE("Force_Car_Language", "", "Force a specific language for the car apps"),
+		ENABLED_ANALYTICS("Enable_Analytics", "false", "Enable Analytics module"),
 		EVPLANNING_ENABLED("Enabled_EVPlanning", "false", "use EVPlanning to plan charging-stops for electric vehicles"),
 		EVPLANNING_AUTO_REPLAN( "Enabled_EVPlanning_AutoReplan", "false", "allow automatic replanning"),
 		EVPLANNING_MAXSPEED_SPORT("EVPlanning_Maxspeed_Sport", "150", "Maximum speed in drivingmode Sport"),
