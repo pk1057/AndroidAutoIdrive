@@ -24,22 +24,21 @@ import com.google.gson.Gson
 import de.bmw.idrive.BMWRemoting
 import de.bmw.idrive.BMWRemotingServer
 import de.bmw.idrive.BaseBMWRemotingClient
-import me.hufman.androidautoidrive.*
+import io.bimmergestalt.idriveconnectkit.CDS
+import io.bimmergestalt.idriveconnectkit.IDriveConnection
+import io.bimmergestalt.idriveconnectkit.android.CarAppResources
+import io.bimmergestalt.idriveconnectkit.android.IDriveConnectionStatus
+import io.bimmergestalt.idriveconnectkit.android.security.SecurityAccess
+import io.bimmergestalt.idriveconnectkit.rhmi.*
+import me.hufman.androidautoidrive.PhoneAppResources
 import me.hufman.androidautoidrive.carapp.*
-import me.hufman.androidautoidrive.carapp.evplanning.views.*
-import me.hufman.androidautoidrive.evplanning.NetworkPreference
+import me.hufman.androidautoidrive.carapp.evplanning.views.RoutesListView
+import me.hufman.androidautoidrive.carapp.evplanning.views.StringPropertyView
+import me.hufman.androidautoidrive.carapp.evplanning.views.WaypointDetailsView
+import me.hufman.androidautoidrive.carapp.evplanning.views.WaypointsListView
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.androidautoidrive.utils.Utils
 import me.hufman.androidautoidrive.utils.removeFirst
-import me.hufman.idriveconnectionkit.CDS
-import me.hufman.idriveconnectionkit.IDriveConnection
-import me.hufman.idriveconnectionkit.rhmi.RHMIApplicationIdempotent
-import me.hufman.idriveconnectionkit.rhmi.RHMIApplicationSynchronized
-import me.hufman.idriveconnectionkit.android.CarAppResources
-import me.hufman.idriveconnectionkit.android.IDriveConnectionStatus
-import me.hufman.idriveconnectionkit.android.security.SecurityAccess
-import me.hufman.idriveconnectionkit.rhmi.*
-import java.lang.RuntimeException
 import java.util.*
 
 const val TAG = "EVPlanning"
@@ -79,7 +78,7 @@ data class PositionDetailedInfo(
 			.filterNot { it.isNullOrBlank() }
 			.joinToString(", " ) {
 				it!!.splitToSequence("\\s+").map { word ->
-					word.toLowerCase(Locale.ROOT).capitalize(Locale.ROOT)
+					word.lowercase(Locale.ROOT).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
 				}.joinToString( " " )
 			}
 			.takeIf { it.isNotEmpty() }

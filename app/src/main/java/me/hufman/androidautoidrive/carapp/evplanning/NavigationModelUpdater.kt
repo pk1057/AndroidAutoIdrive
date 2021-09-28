@@ -338,8 +338,8 @@ class NavigationModelUpdater {
 					},
 					charger_id = step.charger?.id,
 					charger_type = step.charger_type?.let {
-						if (it == "0") null else it.toUpperCase(
-							Locale.ROOT
+						if (it == "0") null else it.uppercase(
+								Locale.ROOT
 						)
 					},
 					is_waypoint = indexInfo != null,

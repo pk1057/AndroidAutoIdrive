@@ -20,16 +20,18 @@ package me.hufman.androidautoidrive
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
+import io.bimmergestalt.idriveconnectkit.android.IDriveConnectionStatus
+import io.bimmergestalt.idriveconnectkit.android.security.SecurityAccess
 import io.sentry.Sentry
+import me.hufman.androidautoidrive.carapp.evplanning.EVPlanningApplication
+import me.hufman.androidautoidrive.carapp.evplanning.EVPlanningSettings
+import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelController
+import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater
 import me.hufman.androidautoidrive.connections.BtStatus
 import me.hufman.androidautoidrive.evplanning.RoutingService
 import me.hufman.androidautoidrive.evplanning.RoutingServiceUpdater
 import me.hufman.androidautoidrive.evplanning.iternio.PlanningImpl
-import me.hufman.androidautoidrive.carapp.evplanning.*
 import me.hufman.androidautoidrive.utils.GraphicsHelpersAndroid
-import me.hufman.idriveconnectionkit.android.IDriveConnectionStatus
-import me.hufman.idriveconnectionkit.android.security.SecurityAccess
-import java.lang.Exception
 
 const val AUTHBASE="APIKEY "
 const val BASEURL="https://api.iternio.com/"

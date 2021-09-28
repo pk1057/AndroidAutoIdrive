@@ -19,6 +19,7 @@ package me.hufman.androidautoidrive.evplanning.iternio
 
 import com.truchsess.evrouting.iternio.dto.VehicleLibraryResult
 import io.sentry.Sentry
+import me.hufman.androidautoidrive.carapp.L
 import me.hufman.androidautoidrive.evplanning.iternio.api.PlanningAPI
 import me.hufman.androidautoidrive.evplanning.iternio.dto.ChargersResult
 import me.hufman.androidautoidrive.evplanning.iternio.dto.NetworksResult
@@ -78,7 +79,7 @@ class PlanningImpl(baseUrl: String, private val authorization: String) : Plannin
                                 return
                             }
                         }
-                        response.message()?.let {
+                        response.message().let {
                             if (it.isNotEmpty()) {
                                 onError(it)
                                 return

@@ -34,7 +34,7 @@ class EVPlanningSettings(val capabilities: Map<String, String?>, val btStatus: B
 		}
 
 	// car's supported features
-	val tts = capabilities["tts"]?.toLowerCase(Locale.ROOT) == "true"
+	val tts = capabilities["tts"]?.lowercase(Locale.ROOT) == "true"
 
 	val booleanSettings = listOf(
 			AppSettings.KEYS.EVPLANNING_AUTO_REPLAN,

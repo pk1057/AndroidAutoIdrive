@@ -34,7 +34,7 @@ These API keys can be set directly in the gradle.properties in the repository, b
 
     ![Import Project Wizard](images/developer-repourl.png)
 
-    - Gradle will complain about the missing external APKs, so copy the APKs from the preparation steps to the `externals` folder of the project and tell Android Studio to Try Again to sync the Gradle files
+    - Next, copy the APKs from the preparation steps to the `externals` folder of the project. If you try to build without them, you would receive the following error:
 
     ![External Dependencies Missing Error](images/developer-externalmissing.png)
 
@@ -43,7 +43,7 @@ These API keys can be set directly in the gradle.properties in the repository, b
     - `git submodule init && git submodule update`
     - Copy the APKs from the preparation steps to the `externals` folder of the new repository
 
-Do not use the Github Download Zip option, because it does not include the necessary submodules or the `.git` metadata for easy updates.
+The Github Download Zip option is not recommended, because it does not include the `.git` metadata for easy updates.
 
 ## Build the Project
   - Using Android Studio:

@@ -19,18 +19,21 @@ package me.hufman.androidautoidrive.carapp.evplanning.views
 
 import android.os.Handler
 import android.util.Log
+import io.bimmergestalt.idriveconnectkit.rhmi.*
 import io.sentry.Sentry
-import me.hufman.androidautoidrive.*
+import me.hufman.androidautoidrive.DeferredUpdate
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
+import me.hufman.androidautoidrive.carapp.L
 import me.hufman.androidautoidrive.carapp.RHMIActionAbort
 import me.hufman.androidautoidrive.carapp.RHMIListAdapter
-import me.hufman.androidautoidrive.carapp.evplanning.*
+import me.hufman.androidautoidrive.carapp.evplanning.DisplayWaypoint
+import me.hufman.androidautoidrive.carapp.evplanning.EVPlanningSettings
+import me.hufman.androidautoidrive.carapp.evplanning.NavigationModel
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.TIME_FMT
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistance
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatTimeDifference
 import me.hufman.androidautoidrive.carapp.evplanning.TAG
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
-import me.hufman.idriveconnectionkit.rhmi.*
 import java.util.*
 import kotlin.reflect.KClass
 
@@ -276,45 +279,45 @@ class WaypointsListView(
 					} else null
 					//5 columns: icon, title, dist, soc, eta
 					object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
-						override fun convertRow(index: Int, wp: DisplayWaypoint): Array<Any> {
-							val icon = if (wp.is_waypoint) iconFlag ?: "" else ""
+						override fun convertRow(index: Int, item: DisplayWaypoint): Array<Any> {
+							val icon = if (item.is_waypoint) iconFlag ?: "" else ""
 							val firstLine = listOfNotNull(
-								wp.title ?: L.EVPLANNING_UNKNOWN_LOC,
+								item.title ?: L.EVPLANNING_UNKNOWN_LOC,
 								addition,
 							).joinToString(" ")
 							val secondLine = listOfNotNull(
-								wp.operator?.let { "[${it}]" },
-								wp.num_chargers?.let {
+								item.operator?.let { "[${it}]" },
+								item.num_chargers?.let {
 									if (it > 0) {
 										"$it"
 									} else {
 										null
 									}
 								},
-								wp.charger_type?.toUpperCase(Locale.ROOT),
-								wp.trip_dst?.let { formatDistance(it) },
-								wp.soc_ariv?.let { "${String.format("%.1f", it)}%" },
+									item.charger_type?.uppercase(Locale.ROOT),
+								item.trip_dst?.let { formatDistance(it) },
+								item.soc_ariv?.let { "${String.format("%.1f", it)}%" },
 								when {
-									wp.soc_planned != null && wp.final_num_charges == null -> "(${
+									item.soc_planned != null && item.final_num_charges == null -> "(${
 										String.format(
 											"%.0f",
-											wp.soc_planned
+											item.soc_planned
 										)
 									}%)"
-									wp.soc_planned == null && wp.final_num_charges != null -> "(${wp.final_num_charges} Charges)"
-									wp.soc_planned != null && wp.final_num_charges != null -> "(${
+									item.soc_planned == null && item.final_num_charges != null -> "(${item.final_num_charges} Charges)"
+									item.soc_planned != null && item.final_num_charges != null -> "(${
 										String.format(
 											"%.0f",
-											wp.soc_planned
+											item.soc_planned
 										)
-									}%, ${wp.final_num_charges} Charges)"
+									}%, ${item.final_num_charges} Charges)"
 									else -> null
 								},
 							).joinToString(" ")
 							val delta_dst =
-								wp.delta_dst?.let { "+${formatDistance(it)}" } ?: ""
+								item.delta_dst?.let { "+${formatDistance(it)}" } ?: ""
 							val delta_dur =
-								wp.delta_duration?.let { "+${formatTimeDifference(it)}" }
+								item.delta_duration?.let { "+${formatTimeDifference(it)}" }
 									?: "--:--"
 							return arrayOf(
 								icon,
@@ -366,30 +369,30 @@ class WaypointsListView(
 					} else null
 					//5 columns: icon, title, dist, soc, eta
 					object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
-						override fun convertRow(index: Int, wp: DisplayWaypoint): Array<Any> {
-							val icon = if (wp.is_waypoint) iconFlag ?: "" else ""
+						override fun convertRow(index: Int, item: DisplayWaypoint): Array<Any> {
+							val icon = if (item.is_waypoint) iconFlag ?: "" else ""
 							val firstLine = listOfNotNull(
-								wp.title ?: L.EVPLANNING_UNKNOWN_LOC,
+								item.title ?: L.EVPLANNING_UNKNOWN_LOC,
 								addition
 							).joinToString(" ")
 							val secondLine = listOfNotNull(
-								wp.operator?.let { "[${it}]" },
-								wp.num_chargers?.let {
+								item.operator?.let { "[${it}]" },
+								item.num_chargers?.let {
 									if (it > 0) {
 										"${it}"
 									} else {
 										null
 									}
 								},
-								wp.charger_type?.toUpperCase(Locale.ROOT),
+									item.charger_type?.uppercase(Locale.ROOT),
 								if (index > 0) {
-									wp.step_dst?.let { formatDistance(it) }
+									item.step_dst?.let { formatDistance(it) }
 								} else null,
-								wp.soc_ariv?.let { "${String.format("%.1f", it)}%" }
-									?: wp.soc_planned?.let { "${String.format("%.0f", it)}%" },
+								item.soc_ariv?.let { "${String.format("%.1f", it)}%" }
+									?: item.soc_planned?.let { "${String.format("%.0f", it)}%" },
 							).joinToString(" ")
-							val trip_dst = wp.trip_dst?.let { formatDistance(it) } ?: "-"
-							val eta = wp.eta?.format(TIME_FMT) ?: "--:--"
+							val trip_dst = item.trip_dst?.let { formatDistance(it) } ?: "-"
+							val eta = item.eta?.format(TIME_FMT) ?: "--:--"
 							return arrayOf(
 								icon,
 								"",

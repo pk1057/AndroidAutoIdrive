@@ -17,16 +17,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package me.hufman.androidautoidrive.carapp.evplanning.views
 
+import io.bimmergestalt.idriveconnectkit.rhmi.*
 import io.sentry.Sentry
-import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import me.hufman.androidautoidrive.PhoneAppResources
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
-import me.hufman.androidautoidrive.carapp.evplanning.*
+import me.hufman.androidautoidrive.carapp.L
 import me.hufman.androidautoidrive.carapp.RHMIModelType
+import me.hufman.androidautoidrive.carapp.evplanning.DisplayWaypoint
+import me.hufman.androidautoidrive.carapp.evplanning.EVPlanningSettings
+import me.hufman.androidautoidrive.carapp.evplanning.NavigationModel
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.TIME_FMT
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistance
 import me.hufman.androidautoidrive.evplanning.NetworkPreference
-import me.hufman.idriveconnectionkit.rhmi.*
+import me.hufman.androidautoidrive.utils.GraphicsHelpers
 import java.util.*
 
 class WaypointDetailsView(
@@ -77,7 +80,7 @@ class WaypointDetailsView(
 			}
 			val outlets = listOfNotNull(
 				numChargers,
-				wp.charger_type?.toUpperCase(Locale.ROOT),
+					wp.charger_type?.uppercase(Locale.ROOT),
 			).joinToString(" ").takeIf { it.isNotEmpty() }
 			val soc = if (wp.soc_ariv == null) {
 				when {

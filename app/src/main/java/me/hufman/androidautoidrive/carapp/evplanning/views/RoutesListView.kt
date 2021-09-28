@@ -20,19 +20,23 @@ package me.hufman.androidautoidrive.carapp.evplanning.views
 import android.os.Handler
 import android.util.Log
 import de.bmw.idrive.BMWRemoting
+import io.bimmergestalt.idriveconnectkit.rhmi.*
 import io.sentry.Sentry
-import me.hufman.androidautoidrive.*
+import me.hufman.androidautoidrive.AppSettings
+import me.hufman.androidautoidrive.DeferredUpdate
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
+import me.hufman.androidautoidrive.carapp.L
 import me.hufman.androidautoidrive.carapp.RHMIActionAbort
 import me.hufman.androidautoidrive.carapp.RHMIListAdapter
-import me.hufman.androidautoidrive.carapp.evplanning.*
+import me.hufman.androidautoidrive.carapp.evplanning.DisplayRoute
+import me.hufman.androidautoidrive.carapp.evplanning.EVPlanningSettings
+import me.hufman.androidautoidrive.carapp.evplanning.NavigationModel
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistance
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatDistanceDetailed
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModelUpdater.Companion.formatTime
 import me.hufman.androidautoidrive.carapp.evplanning.TAG
 import me.hufman.androidautoidrive.evplanning.RouteData.Companion.MAX_STEP_OFFSET
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
-import me.hufman.idriveconnectionkit.rhmi.*
 import kotlin.reflect.KClass
 
 class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers, val settings: EVPlanningSettings,

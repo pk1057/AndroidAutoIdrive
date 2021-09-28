@@ -17,8 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package me.hufman.androidautoidrive.carapp.evplanning.views
 
+import io.bimmergestalt.idriveconnectkit.rhmi.RHMIState
 import me.hufman.androidautoidrive.carapp.InputState
-import me.hufman.idriveconnectionkit.rhmi.RHMIState
 
 class StringPropertyView(
 	destState: RHMIState,
