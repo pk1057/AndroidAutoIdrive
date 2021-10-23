@@ -14,9 +14,9 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
+import io.bimmergestalt.idriveconnectkit.SidebarRHMIDimensions
+import io.bimmergestalt.idriveconnectkit.SubsetRHMIDimensions
 import me.hufman.androidautoidrive.*
-import me.hufman.androidautoidrive.carapp.SidebarRHMIDimensions
-import me.hufman.androidautoidrive.carapp.SubsetRHMIDimensions
 import me.hufman.androidautoidrive.utils.TimeUtils
 import java.util.*
 
@@ -82,7 +82,7 @@ class GMapsProjection(val parentContext: Context, display: Display, val appSetti
 		val margin = (fullDimensions.appWidth - sidebarDimensions.appWidth) / 2 + 30
 		map?.setPadding(margin, 0, margin, 0)
 
-		val style = appSettings[AppSettings.KEYS.GMAPS_STYLE].toLowerCase(Locale.ROOT)
+		val style = appSettings[AppSettings.KEYS.GMAPS_STYLE].lowercase(Locale.ROOT)
 
 		val location = this.location
 		val mapstyleId = when(style) {

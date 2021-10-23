@@ -109,6 +109,7 @@ class NotificationAppTest {
 		UnicodeCleaner._addPlaceholderEmoji("\uD83D\uDE00", listOf("grinning"), "grinning face")
 		UnicodeCleaner._addPlaceholderEmoji("\uD83D\uDC08", listOf("cat2"), "cat")
 		UnicodeCleaner._addPlaceholderEmoji("\uD83D\uDE3B", listOf("heart_eyes_cat"), "heart_eyes_cat")
+		UnicodeCleaner._addPlaceholderEmoji("\uD83D\uDC97", listOf("heartpulse"), "heartpulse")
 	}
 
 	@After
@@ -455,7 +456,7 @@ class NotificationAppTest {
 	                             sidePicture: Drawable? = null, picture: Drawable? = null, pictureUri: String? = null,
 	                             actions: List<CarNotification.Action>? = null): CarNotification {
 		val usedNotifications = actions ?: listOf(CarNotification.Action(
-				"Custom Action", false, emptyList()
+				"Custom Action \uD83D\uDC97", false, emptyList()
 		))
 
 		return CarNotification("me.hufman.androidautoidrive", "test$title", "Test AppName", mock(), clearable, usedNotifications,
@@ -1025,7 +1026,7 @@ class NotificationAppTest {
 		assertEquals(true, mockServer.properties[123]?.get(RHMIProperty.PropertyId.ENABLED.id))
 		assertEquals(true, mockServer.properties[123]?.get(RHMIProperty.PropertyId.SELECTABLE.id))
 		assertEquals(true, mockServer.properties[123]?.get(RHMIProperty.PropertyId.VISIBLE.id))
-		assertEquals("Custom Action", mockServer.data[524])  // custom action button
+		assertEquals("Custom Action  ♥ ", mockServer.data[524])  // custom action button
 		assertEquals(false, mockServer.properties[124]?.get(RHMIProperty.PropertyId.ENABLED.id))  // custom action button
 		assertEquals(false, mockServer.properties[124]?.get(RHMIProperty.PropertyId.SELECTABLE.id))  // clear this notification button
 		assertEquals(true, mockServer.properties[124]?.get(RHMIProperty.PropertyId.VISIBLE.id))
@@ -1231,7 +1232,7 @@ class NotificationAppTest {
 		// Add a colon, should show emoji suggestions
 		buttons[1].getAction()?.asRAAction()?.rhmiActionCallback?.onActionEvent(emptyMap<Int, Any>())
 		inputComponent.getAction()?.asRAAction()?.rhmiActionCallback?.onActionEvent(mapOf(8.toByte() to "Spoken text :hea"))
-		assertEquals(listOf("Spoken text :hea", "Spoken text :heavy_check_mark:", "Spoken text :heart_eyes_cat:"), (mockServer.data[inputComponent.suggestModel] as BMWRemoting.RHMIDataTable).data.map { it[0] })
+		assertEquals(listOf("Spoken text :hea", "Spoken text :heavy_check_mark:", "Spoken text :heart_eyes_cat:", "Spoken text :heartpulse:"), (mockServer.data[inputComponent.suggestModel] as BMWRemoting.RHMIDataTable).data.map { it[0] })
 		inputComponent.getSuggestAction()?.asRAAction()?.rhmiActionCallback?.onActionEvent(mapOf(1.toByte() to 2))
 		verify(carNotificationController).reply(notification.key, notification.actions[0].name.toString(), "Spoken text \uD83D\uDE3B")
 

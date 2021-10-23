@@ -136,6 +136,7 @@
     <string name="lbl_support_feedback">Feedback geben</string>
     <string name="lbl_support_issues">Öffne Tickets</string>
     <string name="lbl_support_share">Weitersagen</string>
+    <string name="lbl_support_privacy">Datenschutz ist wichtig, weshalb AAIdrive personenbezogene Daten nicht erfasst, speichert oder weitergibt. Tippe hier, um mehr zu erfahren…</string>
     <string name="lbl_support_thanks">Vielen Dank, dass Sie AAIdrive verwenden!</string>
     <string name="lbl_ok">OK</string>
     <string name="lbl_cancel">Abbrechen</string>
@@ -164,6 +165,9 @@
     <string name="txt_setup_bmw_mine_conflict">Sowohl die BMW Connected als auch My BMW App sind installiert, was zu einer instabilen Verbindung führen kann, sofern keine USB-Verbindung besteht</string>
     <string name="txt_setup_mini_mine_conflict">Sowohl die MINI Connected als auch My MINI App sind installiert, was zu einer instabilen Verbindung führen kann, sofern keine USB-Verbindung besteht</string>
     <string name="txt_setup_security_missing">Security Service ist nicht erreichbar:</string>
+    <string name="txt_setup_background_killed">Die App wurde beim Verbinden mit dem Auto beendet</string>
+    <string name="txt_setup_background_suspended">Die App wurde im Hintergrund angehalten, während sie mit dem Auto verbunden war</string>
+    <string name="txt_setup_background_restrictions_hint">Überprüfe die Einstellungen zur Hintergrundaktivität von Apps und die Akku-Einstellungen auf deinem Gerät, damit AAIdrive im Hintergrund ausgeführt werden kann</string>
     <string name="btn_install">Installieren</string>
     <string name="btn_install_bmwmine">Installieren Sie die MyBMW-App</string>
     <string name="btn_install_minimine">Installieren Sie die MINI-App</string>
@@ -309,6 +313,7 @@
     <string name="notification_assistant_description">Nur nötig, weil der Bildschirm an ist</string>
     <string name="donation_title">Gefällt Dir diese App?</string>
     <string name="donation_text">Unterstütze den Entwickler mit einer kleinen Spende</string>
+    <string name="donation_text_onetime">Einmalige Anforderung</string>
     <string name="txt_spotify_auth_notification">Spotify Web API muss autorisiert werden. Klicken Sie hier, um zu autorisieren.</string>
     <string name="txt_spotify_app_remote_last_error">Spotify App Remote letzter Fehler:</string>
     <string name="txt_spotify_api_authorization_needed">Spotify Web API Autorisierung erforderlich.</string>

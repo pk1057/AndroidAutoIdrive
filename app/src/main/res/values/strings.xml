@@ -153,6 +153,7 @@
     <string name="lbl_support_feedback">Providing feedback</string>
     <string name="lbl_support_issues">Opening issues</string>
     <string name="lbl_support_share">Spreading the word</string>
+    <string name="lbl_support_privacy">Privacy matters, which is why AAIdrive does not collect, store, or share personal data. Tap here to learn more…</string>
     <string name="lbl_support_thanks">Thank you for using AAIdrive!</string>
 
     <string name="lbl_ok">OK</string>
@@ -206,6 +207,10 @@
     <string name="txt_setup_bmw_mine_conflict">Both the BMW Connected and My BMW apps are installed, which might cause connection instability unless connecting over USB</string>
     <string name="txt_setup_mini_mine_conflict">Both the MINI Connected and My MINI apps are installed, which might cause connection instability unless connecting over USB</string>
     <string name="txt_setup_security_missing">Security Service is unreachable:</string>
+
+    <string name="txt_setup_background_killed">The app was killed while connected to the car</string>
+    <string name="txt_setup_background_suspended">The app was paused in the background while connected to the car</string>
+    <string name="txt_setup_background_restrictions_hint">Check your phone\'s background execution and battery settings to allow AAIdrive to run in the background</string>
 
     <string name="btn_install">Install</string>
     <string name="btn_install_bmwmine">Install the MyBMW app</string>
@@ -362,6 +367,7 @@
     <string name="notification_assistant_description">Only necessary because the screen is on</string>
     <string name="donation_title">Like this app?</string>
     <string name="donation_text">Consider showing your support with a small donation</string>
+    <string name="donation_text_onetime">One-time request</string>
 
     <string name="txt_spotify_auth_notification">Spotify Web API needs to be authorized. Click here to authorize.</string>
     <string name="txt_spotify_app_remote_last_error">Spotify App Remote Last Error:</string>

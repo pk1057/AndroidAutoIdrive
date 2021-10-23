@@ -9,6 +9,8 @@ apply plugin: 'kotlin-android'
 
 apply plugin: 'kotlin-kapt'
 
+apply plugin: 'org.ajoberstar.grgit'
+
 apply from: 'buildtools/ColoredOutput.gradle'
 
 apply from: 'buildtools/jacoco.gradle'
@@ -46,8 +48,7 @@ android {
 //        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunner 'me.hufman.androidautoidrive.DexOpenerAndroidJUnitRunner'
         archivesBaseName = "androidautoidrive-${androidGitVersion.name()}"
-        buildConfigField "long", "BUILD_TIME", System.currentTimeMillis() + "L"
-
+        buildConfigField "long", "COMMIT_TIME", ((grgit != null && !androidGitVersion.name().contains("-dirty")) ? grgit.head().dateTime.toEpochSecond() : 0L) + "L"
         manifestPlaceholders = [
                 spotify_api_key: System.env.AndroidAutoIdrive_SpotifyApiKey ? System.env.AndroidAutoIdrive_SpotifyApiKey : AndroidAutoIdrive_SpotifyApiKey,
                 iternio_api_key: System.env.AndroidAutoIdrive_IternioApiKey ? System.env.AndroidAutoIdrive_IternioApiKey : AndroidAutoIdrive_IternioApiKey,
@@ -226,11 +227,11 @@ dependencies {
     androidTestImplementation 'com.nhaarman:mockito-kotlin:1.6.0'
     androidTestImplementation 'com.github.tmurakami:dexopener:2.0.5'
     androidTestImplementation 'org.awaitility:awaitility-scala:3.1.5'
-    implementation 'io.bimmergestalt:IDriveConnectKit:0.1'
-    implementation 'io.bimmergestalt:IDriveConnectKitAndroid:0.1'
-    testImplementation 'io.bimmergestalt:IDriveConnectKit:0.1'
-    androidTestImplementation 'io.bimmergestalt:IDriveConnectKit:0.1'
-    androidTestImplementation 'io.bimmergestalt:IDriveConnectKitAndroid:0.1'
+    implementation 'io.bimmergestalt:IDriveConnectKit:0.2'
+    implementation 'io.bimmergestalt:IDriveConnectKitAndroid:0.2'
+    testImplementation 'io.bimmergestalt:IDriveConnectKit:0.2'
+    androidTestImplementation 'io.bimmergestalt:IDriveConnectKit:0.2'
+    androidTestImplementation 'io.bimmergestalt:IDriveConnectKitAndroid:0.2'
     androidTestImplementation "org.bouncycastle:bcmail-jdk16:1.46"
     testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlin_coroutines_version"
     testImplementation "org.powermock:powermock-core:2.0.9"

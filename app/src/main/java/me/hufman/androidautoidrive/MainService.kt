@@ -7,12 +7,14 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.bmwgroup.connected.car.app.BrandType
 import io.bimmergestalt.idriveconnectkit.CDS
+import io.bimmergestalt.idriveconnectkit.RHMIDimensions
 import io.bimmergestalt.idriveconnectkit.android.CarAPIAppInfo
-import io.bimmergestalt.idriveconnectkit.android.CarAPIDiscovery
+import io.bimmergestalt.idriveconnectkit.android.CarAppAssetResources
 import io.bimmergestalt.idriveconnectkit.android.IDriveConnectionReceiver
 import io.bimmergestalt.idriveconnectkit.android.security.SecurityAccess
 import me.hufman.androidautoidrive.carapp.*
@@ -72,8 +74,11 @@ class MainService: Service() {
 		combinedCallback()
 	}
 
+	// detect if the phone has suspended or destroyed the app
+	val backgroundInterruptionDetection by lazy { BackgroundInterruptionDetection.build(applicationContext) }
+
 	// shut down probing after a timeout
-	val handler = Handler()
+	val handler = Handler(Looper.getMainLooper())
 	val shutdownTimeout = Runnable {
 		if (!iDriveConnectionReceiver.isConnected || !securityAccess.isConnected()) {
 			stopSelf()
@@ -99,6 +104,8 @@ class MainService: Service() {
 
 	override fun onCreate() {
 		super.onCreate()
+
+		backgroundInterruptionDetection.detectKilledPreviously()
 
 		// only register listeners a single time
 
@@ -157,6 +164,8 @@ class MainService: Service() {
 		carProberThread?.quitSafely()
 		btStatus.unregister()
 
+		backgroundInterruptionDetection.stop()
+
 		// close the notification
 		stopServiceNotification()
 		super.onDestroy()
@@ -205,14 +214,14 @@ class MainService: Service() {
 				disconnectIntentName = "me.hufman.androidautoidrive.CarConnectionListener_STOP",
 				appIcon = null
 		)
-		CarAPIDiscovery.announceApp(applicationContext, myApp)
+		myApp.announceApp(applicationContext)
 	}
 
 	private fun startCarProber() {
 		if (carProberThread?.isAlive != true) {
 			carProberThread = CarProber(securityAccess,
-				CarAppAssetManager(applicationContext, "smartthings").getAppCertificateRaw("bmw")!!.readBytes(),
-				CarAppAssetManager(applicationContext, "smartthings").getAppCertificateRaw("mini")!!.readBytes()
+				CarAppAssetResources(applicationContext, "smartthings").getAppCertificateRaw("bmw")!!.readBytes(),
+				CarAppAssetResources(applicationContext, "smartthings").getAppCertificateRaw("mini")!!.readBytes()
 			).apply { start() }
 		} else {
 			carProberThread?.schedule(1000)
@@ -238,8 +247,8 @@ class MainService: Service() {
 			foregroundNotificationBuilder.setContentText(getString(R.string.connectionStatusWaiting))
 			foregroundNotificationBuilder.setOngoing(false) // able to swipe away if we aren't currently connected
 		} else {
-			if (brand?.toLowerCase(Locale.ROOT) == "bmw") foregroundNotificationBuilder.setContentText(getText(R.string.notification_description_bmw))
-			if (brand?.toLowerCase(Locale.ROOT) == "mini") foregroundNotificationBuilder.setContentText(getText(R.string.notification_description_mini))
+			if (brand?.lowercase(Locale.ROOT) == "bmw") foregroundNotificationBuilder.setContentText(getText(R.string.notification_description_bmw))
+			if (brand?.lowercase(Locale.ROOT) == "mini") foregroundNotificationBuilder.setContentText(getText(R.string.notification_description_mini))
 
 			if (chassisCode != null) {
 				foregroundNotificationBuilder.setContentText(resources.getString(R.string.notification_description_chassiscode, chassisCode.toString()))
@@ -318,19 +327,18 @@ class MainService: Service() {
 
 					// start addons
 					startAny = startAny or startAddons()
-				}
 
-				// check if we are idle and should shut down
-				if (!startAny) {
-					Log.i(TAG, "No apps are enabled, skipping the service start")
-					stopServiceNotification()
-					stopSelf()
+					backgroundInterruptionDetection.start()
 				}
-
-				// show a donation popup, if it's time
-				DonationRequest(this).countUsage()
 			} else {
 				Log.d(TAG, "Not fully connected: IDrive:${iDriveConnectionReceiver.isConnected} SecurityService:${securityAccess.isConnected()}")
+				if (connectionTime != null) {
+					// record that we successfully disconnected
+					backgroundInterruptionDetection.safelyStop()
+
+					// show a donation popup, if it's time
+					DonationRequest(this).countUsage()
+				}
 				connectionTime = null
 				stopCarApps()
 				val timeout = if (btStatus.isBTConnected) CONNECTED_PROBE_TIMEOUT else DISCONNECTED_PROBE_TIMEOUT
@@ -359,7 +367,7 @@ class MainService: Service() {
 					}
 
 					carappCapabilities = CarInformationDiscovery(iDriveConnectionReceiver, securityAccess,
-							CarAppAssetManager(applicationContext, "smartthings"), carInformationUpdater)
+						CarAppAssetResources(applicationContext, "smartthings"), carInformationUpdater)
 					carappCapabilities?.onCreate()
 				}
 				threadCapabilities?.start()
@@ -417,9 +425,9 @@ class MainService: Service() {
 					Log.i(TAG, "Starting to discover car capabilities")
 
 					carappAssistant = AssistantApp(iDriveConnectionReceiver, securityAccess,
-							CarAppAssetManager(applicationContext, "basecoreOnlineServices"),
-							AssistantControllerAndroid(applicationContext, PhoneAppResourcesAndroid(applicationContext)),
-							GraphicsHelpersAndroid())
+						CarAppAssetResources(applicationContext, "basecoreOnlineServices"),
+						AssistantControllerAndroid(applicationContext, PhoneAppResourcesAndroid(applicationContext)),
+						GraphicsHelpersAndroid())
 					carappAssistant?.onCreate()
 				}
 				threadAssistant?.start()
@@ -448,12 +456,12 @@ class MainService: Service() {
 
 	fun startNavigationListener() {
 		if (carInformationObserver.capabilities["navi"] == "true") {
-			if (iDriveConnectionReceiver.brand?.toLowerCase(Locale.ROOT) == "bmw") {
+			if (iDriveConnectionReceiver.brand?.lowercase(Locale.ROOT) == "bmw") {
 				packageManager.setComponentEnabledSetting(
 						ComponentName(BuildConfig.APPLICATION_ID, "${BuildConfig.APPLICATION_ID}.phoneui.NavActivityBMW"),
 						PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP
 				)
-			} else if (iDriveConnectionReceiver.brand?.toLowerCase(Locale.ROOT) == "mini") {
+			} else if (iDriveConnectionReceiver.brand?.lowercase(Locale.ROOT) == "mini") {
 				packageManager.setComponentEnabledSetting(
 						ComponentName(BuildConfig.APPLICATION_ID, "${BuildConfig.APPLICATION_ID}.phoneui.NavActivityMINI"),
 						PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP

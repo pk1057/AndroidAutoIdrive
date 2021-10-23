@@ -1,7 +1,7 @@
 package me.hufman.androidautoidrive.carapp.music.views
 
 import de.bmw.idrive.BMWRemoting
-import io.bimmergestalt.idriveconnectkit.etchAsInt
+import io.bimmergestalt.idriveconnectkit.Utils.etchAsInt
 import io.bimmergestalt.idriveconnectkit.rhmi.*
 import me.hufman.androidautoidrive.PhoneAppResources
 import me.hufman.androidautoidrive.UnicodeCleaner
@@ -23,7 +23,7 @@ import me.hufman.androidautoidrive.utils.Utils
 class PlaybackView(val state: RHMIState, val controller: MusicController, val carAppImages: Map<String, ByteArray>, val phoneAppResources: PhoneAppResources, val graphicsHelpers: GraphicsHelpers, val musicImageIDs: MusicImageIDs) {
 	companion object {
 		const val INITIALIZATION_DEFERRED_TIMEOUT = 6000
-		const val POSITION_ACTION_DEBOUNCE = 2000
+		const val POSITION_ACTION_DEBOUNCE = 500
 		fun fits(state: RHMIState): Boolean {
 			return state is RHMIState.AudioHmiState || (
 					state is RHMIState.ToolbarState &&
@@ -214,12 +214,12 @@ class PlaybackView(val state: RHMIState, val controller: MusicController, val ca
 					lastPositionActionTime = System.currentTimeMillis()
 				}
 			}
-			state.getArtistAction()?.asRAAction()?.rhmiActionCallback = RHMIActionCallback { args ->
+			state.getArtistAction()?.asRAAction()?.rhmiActionCallback = RHMIActionButtonCallback {
 				browseView.clearPages()
 				val page = browseView.pushBrowsePage(null)
 				state.getArtistAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = page.state.id
 			}
-			state.getAlbumAction()?.asRAAction()?.rhmiActionCallback = RHMIActionCallback { args ->
+			state.getAlbumAction()?.asRAAction()?.rhmiActionCallback = RHMIActionButtonCallback {
 				browseView.clearPages()
 				val page = browseView.pushBrowsePage(null)
 				state.getAlbumAction()?.asHMIAction()?.getTargetModel()?.asRaIntModel()?.value = page.state.id

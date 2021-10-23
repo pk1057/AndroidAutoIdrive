@@ -150,7 +150,7 @@ object UnicodeCleaner {
 	}
 
 	/** Replaces any supported unicode from this string to the shortname tag */
-	fun clean(input: String): String {
+	fun clean(input: String, convertEmoticons: Boolean = true): String {
 		val bidiCleaned = cleanBidiIsolates(input)
 
 		val emojiTransformer = object : EmojiParser.EmojiTransformer {
@@ -159,7 +159,7 @@ object UnicodeCleaner {
 				if (emoji[0].code < 255) {
 					// base ascii code, like :copyright: and :registered:
 					return emoji
-				} else if (EMOTICONS.containsKey(unicodeCandidate.emoji?.aliases?.get(0) ?: "")) {
+				} else if (convertEmoticons && EMOTICONS.containsKey(unicodeCandidate.emoji?.aliases?.get(0) ?: "")) {
 					return " " + convertEmoticon(unicodeCandidate.emoji?.aliases?.get(0) ?: "") + " "
 				} else {
 					return ":" + unicodeCandidate.emoji?.aliases?.get(0) + ":"
@@ -173,7 +173,7 @@ object UnicodeCleaner {
 	@VisibleForTesting(otherwise = VisibleForTesting.NONE)
 	fun _buildPlaceholderEmoji(emoji: String, aliases: List<String>, description: String): Emoji {
 		return Emoji(emojiChar=emoji, emoji=emoji, unicode=emoji, aliases=aliases, description = description,
-				htmlDec="&#${emoji[0].toLong()};", htmlHex="&#${emoji[0].toLong().toString(16)};")
+				htmlDec="&#${emoji[0].code};", htmlHex="&#${emoji[0].code.toString(16)};")
 	}
 
 	/** Builds just enough of an Emoji object to pass unit tests, and adds it to the data */
