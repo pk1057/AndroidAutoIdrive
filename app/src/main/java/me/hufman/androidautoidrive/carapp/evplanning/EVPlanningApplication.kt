@@ -26,6 +26,7 @@ import de.bmw.idrive.BMWRemotingServer
 import de.bmw.idrive.BaseBMWRemotingClient
 import io.bimmergestalt.idriveconnectkit.CDS
 import io.bimmergestalt.idriveconnectkit.IDriveConnection
+import io.bimmergestalt.idriveconnectkit.Utils.rhmi_setResourceCached
 import io.bimmergestalt.idriveconnectkit.android.CarAppResources
 import io.bimmergestalt.idriveconnectkit.android.IDriveConnectionStatus
 import io.bimmergestalt.idriveconnectkit.android.security.SecurityAccess
@@ -37,8 +38,8 @@ import me.hufman.androidautoidrive.carapp.evplanning.views.StringPropertyView
 import me.hufman.androidautoidrive.carapp.evplanning.views.WaypointDetailsView
 import me.hufman.androidautoidrive.carapp.evplanning.views.WaypointsListView
 import me.hufman.androidautoidrive.utils.GraphicsHelpers
-import me.hufman.androidautoidrive.utils.Utils
 import me.hufman.androidautoidrive.utils.removeFirst
+import me.hufman.androidautoidrive.utils.Utils.loadZipfile
 import java.util.*
 
 const val TAG = "EVPlanning"
@@ -172,7 +173,7 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 
 			val unclaimedStates = LinkedList(carApp.states.values)
 
-			carAppImages = Utils.loadZipfile(carAppAssetsIcons.getImagesDB(iDriveConnectionStatus.brand ?: "common"))
+			carAppImages = loadZipfile(carAppAssetsIcons.getImagesDB(iDriveConnectionStatus.brand ?: "common"))
 
 			// figure out which views to use
 			viewRoutesList = RoutesListView(unclaimedStates.removeFirst { RoutesListView.fits(it) }, graphicsHelpers, settings, focusTriggerController, navigationModelController.navigationModel, carAppImages)
@@ -464,10 +465,10 @@ class EVPlanningApplication(val iDriveConnectionStatus: IDriveConnectionStatus, 
 	fun createRhmiApp(): RHMIApplication {
 		// load the resources
 		rhmiHandle = carConnection.rhmi_create(null, BMWRemoting.RHMIMetaData("me.hufman.androidautoidrive.evplanning", BMWRemoting.VersionInfo(0, 1, 0), "me.hufman.androidautoidrive.evplanning", "me.hufman"))
-		RHMIUtils.rhmi_setResourceCached(carConnection, rhmiHandle, BMWRemoting.RHMIResourceType.DESCRIPTION, carAppAssets.getUiDescription())
-		RHMIUtils.rhmi_setResourceCached(carConnection, rhmiHandle, BMWRemoting.RHMIResourceType.TEXTDB, carAppAssets.getTextsDB(iDriveConnectionStatus.brand
+		carConnection.rhmi_setResourceCached(rhmiHandle, BMWRemoting.RHMIResourceType.DESCRIPTION, carAppAssets.getUiDescription())
+		carConnection.rhmi_setResourceCached(rhmiHandle, BMWRemoting.RHMIResourceType.TEXTDB, carAppAssets.getTextsDB(iDriveConnectionStatus.brand
 				?: "common"))
-		RHMIUtils.rhmi_setResourceCached(carConnection, rhmiHandle, BMWRemoting.RHMIResourceType.IMAGEDB, carAppAssets.getImagesDB(iDriveConnectionStatus.brand
+		carConnection.rhmi_setResourceCached(rhmiHandle, BMWRemoting.RHMIResourceType.IMAGEDB, carAppAssets.getImagesDB(iDriveConnectionStatus.brand
 				?: "common"))
 		carConnection.rhmi_initialize(rhmiHandle)
 

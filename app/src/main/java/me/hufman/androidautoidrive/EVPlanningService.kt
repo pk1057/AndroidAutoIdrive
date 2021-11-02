@@ -20,6 +20,7 @@ package me.hufman.androidautoidrive
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
+import io.bimmergestalt.idriveconnectkit.android.CarAppAssetResources
 import io.bimmergestalt.idriveconnectkit.android.IDriveConnectionStatus
 import io.bimmergestalt.idriveconnectkit.android.security.SecurityAccess
 import io.sentry.Sentry
@@ -78,8 +79,8 @@ class EVPlanningService(val context: Context, val iDriveConnectionStatus: IDrive
 										navigationModelUpdater.navigationModelController = navigationModelController
 
 										carApplication = EVPlanningApplication(iDriveConnectionStatus, securityAccess,
-												CarAppAssetManager(context, "basecoreOnlineServices"),
-												CarAppAssetManager(context, "bmwone"),
+												CarAppAssetResources(context, "basecoreOnlineServices"),
+												CarAppAssetResources(context, "bmwone"),
 												PhoneAppResourcesAndroid(context),
 												GraphicsHelpersAndroid(),
 												routingServiceUpdater.rawCarDataListener,

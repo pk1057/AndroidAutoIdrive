@@ -27,7 +27,6 @@ import me.hufman.androidautoidrive.DeferredUpdate
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
 import me.hufman.androidautoidrive.carapp.L
 import me.hufman.androidautoidrive.carapp.RHMIActionAbort
-import me.hufman.androidautoidrive.carapp.RHMIListAdapter
 import me.hufman.androidautoidrive.carapp.evplanning.DisplayRoute
 import me.hufman.androidautoidrive.carapp.evplanning.EVPlanningSettings
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModel
@@ -100,13 +99,13 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 
 	val actions = listOf(L.EVPLANNING_ACTION_PLAN )
 
-	val actionsListData = object : RHMIListAdapter<String>(3, actions ) {
+	val actionsListData = object : RHMIModel.RaListModel.RHMIListAdapter<String>(3, actions ) {
 		override fun convertRow(index: Int, item: String): Array<Any> {
 			return arrayOf("","",item)
 		}
 	}
 
-	val settingsListData = object : RHMIListAdapter<AppSettings.KEYS>(5, settings.getSettings()) {
+	val settingsListData = object : RHMIModel.RaListModel.RHMIListAdapter<AppSettings.KEYS>(5, settings.getSettings()) {
 		override fun convertRow(index: Int, item: AppSettings.KEYS): Array<Any> {
 			val isString = settings.isStringSetting(item)
 			val value = if (isString) { settings.getStringSetting(item) } else ""
@@ -299,7 +298,7 @@ class RoutesListView(val state: RHMIState, val graphicsHelpers: GraphicsHelpers,
 					emptyListData
 				} else {
 					//5 columns: icon, title, dist, soc, eta
-					object : RHMIListAdapter<DisplayRoute>(3, routes) {
+					object : RHMIModel.RaListModel.RHMIListAdapter<DisplayRoute>(3, routes) {
 						override fun convertRow(index: Int, item: DisplayRoute): Array<Any> {
 							val icon = if (item.contains_waypoint) iconFlag ?: "" else ""
 							val addition = when {

@@ -17,15 +17,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package me.hufman.androidautoidrive.carapp.evplanning.views
 
+import android.os.Build
 import android.os.Handler
 import android.util.Log
+import androidx.annotation.RequiresApi
 import io.bimmergestalt.idriveconnectkit.rhmi.*
 import io.sentry.Sentry
 import me.hufman.androidautoidrive.DeferredUpdate
 import me.hufman.androidautoidrive.carapp.FocusTriggerController
 import me.hufman.androidautoidrive.carapp.L
 import me.hufman.androidautoidrive.carapp.RHMIActionAbort
-import me.hufman.androidautoidrive.carapp.RHMIListAdapter
 import me.hufman.androidautoidrive.carapp.evplanning.DisplayWaypoint
 import me.hufman.androidautoidrive.carapp.evplanning.EVPlanningSettings
 import me.hufman.androidautoidrive.carapp.evplanning.NavigationModel
@@ -278,7 +279,7 @@ class WaypointsListView(
 						"[${L.EVPLANNING_INVALID}]"
 					} else null
 					//5 columns: icon, title, dist, soc, eta
-					object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
+					object : RHMIModel.RaListModel.RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
 						override fun convertRow(index: Int, item: DisplayWaypoint): Array<Any> {
 							val icon = if (item.is_waypoint) iconFlag ?: "" else ""
 							val firstLine = listOfNotNull(
@@ -368,7 +369,8 @@ class WaypointsListView(
 						"[${L.EVPLANNING_INVALID}]"
 					} else null
 					//5 columns: icon, title, dist, soc, eta
-					object : RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
+					object : RHMIModel.RaListModel.RHMIListAdapter<DisplayWaypoint>(5, waypoints) {
+						@RequiresApi(Build.VERSION_CODES.O)
 						override fun convertRow(index: Int, item: DisplayWaypoint): Array<Any> {
 							val icon = if (item.is_waypoint) iconFlag ?: "" else ""
 							val firstLine = listOfNotNull(
@@ -443,7 +445,7 @@ class WaypointsListView(
 			}
 		}
 		this.actionsList.getModel()?.value =
-			object : RHMIListAdapter<WaypointListActions>(3, actionsList) {
+			object : RHMIModel.RaListModel.RHMIListAdapter<WaypointListActions>(3, actionsList) {
 				override fun convertRow(index: Int, item: WaypointListActions): Array<Any> {
 					return arrayOf("", "", actions[item] ?: "")
 				}
